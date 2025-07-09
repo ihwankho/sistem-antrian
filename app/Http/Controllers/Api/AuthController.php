@@ -45,4 +45,12 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    public function logout(Request $request)
+    {
+        try {
+            
+        } catch (Exception $e) {
+        }
+    }
 }

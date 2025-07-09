@@ -56,4 +56,65 @@ class UserController extends Controller
             ], 500);
         }
     }
+    public function update(Request $request, $id)
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            $validator = Validator::make($request->all(), [
+                'nama'           => 'sometimes|required|string|max:255',
+                'nama_pengguna'  => 'sometimes|required|string|max:255|unique:users,nama_pengguna,' . $user->id,
+                'password'       => 'nullable|string|min:6',
+                'role'           => 'sometimes|required|in:admin,petugas',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Update hanya jika ada
+            if ($request->has('nama')) $user->nama = $request->nama;
+            if ($request->has('nama_pengguna')) $user->nama_pengguna = $request->nama_pengguna;
+            if ($request->filled('password')) $user->password = Hash::make($request->password);
+            if ($request->has('role')) $user->role = $request->role;
+
+            $user->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Akun berhasil diperbarui',
+                'data' => $user
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui akun.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete user
+    public function destroy($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            $user->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Akun berhasil dihapus'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat menghapus akun.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
