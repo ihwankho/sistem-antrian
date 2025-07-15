@@ -11,6 +11,24 @@ use Exception;
 
 class UserController extends Controller
 {
+    public function index()
+    {
+        try {
+            $users = User::all();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Data pengguna berhasil diambil',
+                'data' => $users
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mendapatkan data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function store(Request $request)
     {
         try {
@@ -88,7 +106,7 @@ class UserController extends Controller
                 'status' => true,
                 'message' => 'Akun berhasil diperbarui',
                 'data' => $user
-            ]);
+            ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -108,7 +126,7 @@ class UserController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Akun berhasil dihapus'
-            ]);
+            ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
