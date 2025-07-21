@@ -16,6 +16,7 @@ class User extends Authenticatable
         'nama_pengguna',
         'password',
         'role',
+        'id_loket',
     ];
 
     protected $hidden = [
@@ -29,5 +30,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+    public function loket()
+    {
+        return $this->belongsTo(Loket::class, 'id_loket');
     }
 }

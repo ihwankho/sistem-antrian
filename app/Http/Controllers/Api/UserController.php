@@ -32,12 +32,12 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validasi input
             $validator = Validator::make($request->all(), [
                 'nama'           => 'required|string|max:255',
                 'nama_pengguna'  => 'required|string|max:255|unique:users,nama_pengguna',
                 'password'       => 'required|string|min:6',
-                'role'           => 'required|in:admin,petugas',
+                'role'           => 'required|in:1,2',
+                'id_loket'       => 'nullable|exists:lokets,id', // validasi foreign key
             ]);
 
             if ($validator->fails()) {
@@ -48,23 +48,18 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Simpan ke database
             $user = User::create([
                 'nama'          => $request->nama,
                 'nama_pengguna' => $request->nama_pengguna,
                 'password'      => Hash::make($request->password),
                 'role'          => $request->role,
+                'id_loket'      => $request->id_loket,
             ]);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Akun berhasil dibuat',
-                'data' => [
-                    'id' => $user->id,
-                    'nama' => $user->nama,
-                    'nama_pengguna' => $user->nama_pengguna,
-                    'role' => $user->role,
-                ]
+                'data' => $user
             ], 201);
         } catch (Exception $e) {
             return response()->json([
@@ -74,6 +69,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
     public function update(Request $request, $id)
     {
         try {
@@ -83,7 +79,8 @@ class UserController extends Controller
                 'nama'           => 'sometimes|required|string|max:255',
                 'nama_pengguna'  => 'sometimes|required|string|max:255|unique:users,nama_pengguna,' . $user->id,
                 'password'       => 'nullable|string|min:6',
-                'role'           => 'sometimes|required|in:admin,petugas',
+                'role'           => 'sometimes|required|in:1,2',
+                'id_loket'       => 'sometimes|required|exists:lokets,id',
             ]);
 
             if ($validator->fails()) {
@@ -94,11 +91,11 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Update hanya jika ada
             if ($request->has('nama')) $user->nama = $request->nama;
             if ($request->has('nama_pengguna')) $user->nama_pengguna = $request->nama_pengguna;
             if ($request->filled('password')) $user->password = Hash::make($request->password);
             if ($request->has('role')) $user->role = $request->role;
+            if ($request->has('id_loket')) $user->id_loket = $request->id_loket;
 
             $user->save();
 
@@ -115,6 +112,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
     // Delete user
     public function destroy($id)

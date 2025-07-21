@@ -5,7 +5,8 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DepartemenController;
 use App\Http\Controllers\Api\PelayananController;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\PengunjungController;
+use App\Http\Controllers\Api\LoketController;
 
 Route::get('/test-api', function () {
     return 'API terhubung!';
@@ -23,3 +24,9 @@ Route::apiResource('departemen', DepartemenController::class);
 
 //Pelayanan
 Route::apiResource('pelayanan', PelayananController::class);
+
+//pengunjung
+Route::apiResource('pengunjung', PengunjungController::class);
+
+//Loket
+Route::apiResource('lokets', LoketController::class);

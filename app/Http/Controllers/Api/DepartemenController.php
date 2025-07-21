@@ -31,7 +31,8 @@ class DepartemenController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nama_departemen' => 'required|string|unique:departemens,nama_departemen'
+            'nama_departemen' => 'required|string|unique:departemens,nama_departemen',
+            'id_loket' => 'required|exists:lokets,id'
         ]);
 
         if ($validator->fails()) {
@@ -43,7 +44,8 @@ class DepartemenController extends Controller
         }
 
         $departemen = Departemen::create([
-            'nama_departemen' => $request->nama_departemen
+            'nama_departemen' => $request->nama_departemen,
+            'id_loket' => $request->id_loket,
         ]);
 
         return response()->json([
