@@ -14,6 +14,7 @@ Route::get('/test-api', function () {
 
 Route::post('/users', [UserController::class, 'store']);
 Route::get('/users/showall', [UserController::class, 'index']);
+Route::get('/users/{id}', [UserController::class, 'show']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::put('/users/{id}', [UserController::class, 'update']); // Edit user
 Route::delete('/users/{id}', [UserController::class, 'destroy']); // Hapus user

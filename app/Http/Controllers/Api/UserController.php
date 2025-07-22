@@ -29,6 +29,26 @@ class UserController extends Controller
             ], 500);
         }
     }
+    public function show($id)
+    {
+        try {
+            $users = User::findOrFail($id);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Data pengguna berhasil diambil',
+                'data' => $users
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mendapatkan data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     public function store(Request $request)
     {
         try {
