@@ -15,4 +15,14 @@ class Antrian extends Model
         'id_pengunjung',
         'id_pelayanan',
     ];
+
+    public function pengunjung()
+    {
+        return $this->belongsTo(Pengunjung::class, "id_pengunjung");
+    }
+
+    public function pelayanan()
+    {
+        return $this->belongsTo(Pelayanan::class, 'id_pelayanan');
+    }
 }

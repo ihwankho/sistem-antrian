@@ -143,4 +143,30 @@ class PelayananController extends Controller
             ], 500);
         }
     }
+
+    public function getPelaDep()
+    {
+        try {
+            $pelayanan = Pelayanan::with('departemen:id,nama_departemen')->get();
+
+            $data = $pelayanan->map(function ($pelay) {
+                return [
+                    'id' => $pelay->id,
+                    'nama_layanan' => $pelay->nama_layanan,
+                    'nama_departemen' => $pelay->departemen->nama_departemen ?? null
+                ];
+            });
+            return response()->json([
+                'status' => true,
+                'message' => 'Daftar pelayanan dengan nama departemen berhasil ditemukan',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mendapatkan data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

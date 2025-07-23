@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DepartemenController;
 use App\Http\Controllers\Api\PelayananController;
 use App\Http\Controllers\Api\PengunjungController;
 use App\Http\Controllers\Api\LoketController;
+use App\Models\Pelayanan;
 
 Route::get('/test-api', function () {
     return 'API terhubung!';
@@ -18,14 +19,16 @@ Route::get('/users/{id}', [UserController::class, 'show']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::put('/users/{id}', [UserController::class, 'update']); // Edit user
 Route::delete('/users/{id}', [UserController::class, 'destroy']); // Hapus user
+Route::get('/users-loket', [UserController::class, 'getUsLok']); //data user x nama loket
 
 
 //Departemen
 Route::apiResource('departemen', DepartemenController::class);
+Route::get('/departemen-loket', [DepartemenController::class, 'getDepLok']);
 
 //Pelayanan
 Route::apiResource('pelayanan', PelayananController::class);
-
+Route::get('/pelayanan-departemen', [PelayananController::class, 'getPelaDep']);
 //pengunjung
 Route::apiResource('pengunjung', PengunjungController::class);
 

@@ -126,4 +126,30 @@ class DepartemenController extends Controller
             ], 404);
         }
     }
+
+    public function getDepLok()
+    {
+        try {
+            $departemen = Departemen::with('loket:id,nama_loket')->get();
+            $data = $departemen->map(function ($depart) {
+                return [
+                    'id' => $depart->id,
+                    'nama_departemen' => $depart->nama_departemen,
+                    'nama_loket' => $depart->loket->nama_loket ?? null
+                ];
+            });
+            return response()->json([
+                'status' => true,
+                'message' => 'data berhasil ditemukan',
+                'data' => $data
+
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'data tidak ditemukan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

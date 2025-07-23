@@ -153,4 +153,33 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    public function getUsLok()
+    {
+        try {
+            $users = User::with('loket:id,nama_loket')->get();
+
+            $data = $users->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'nama' => $user->nama,
+                    'nama_pengguna' => $user->nama_pengguna,
+                    'role' => $user->role,
+                    'nama_loket' => $user->loket->nama_loket ?? null,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Daftar user dengan nama loket',
+                'data' => $data,
+            ],200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mendapatkan data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
