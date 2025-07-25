@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\DepartemenController;
 use App\Http\Controllers\Api\PelayananController;
 use App\Http\Controllers\Api\PengunjungController;
 use App\Http\Controllers\Api\LoketController;
+use App\Http\Controllers\Api\AntrianController;
+use Illuminate\Support\Facades\DB;
 use App\Models\Pelayanan;
 
 Route::get('/test-api', function () {
@@ -34,3 +36,9 @@ Route::apiResource('pengunjung', PengunjungController::class);
 
 //Loket
 Route::apiResource('lokets', LoketController::class);
+
+//Antrian
+Route::get('/antrian', [AntrianController::class, 'index']);
+Route::post('/antrian', [AntrianController::class, 'store']);
+Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);
+Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);

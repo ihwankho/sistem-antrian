@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Antrian extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'nomor_antrian',
         'status_antrian',
@@ -16,11 +14,13 @@ class Antrian extends Model
         'id_pelayanan',
     ];
 
+    // Relasi ke pengunjung
     public function pengunjung()
     {
-        return $this->belongsTo(Pengunjung::class, "id_pengunjung");
+        return $this->belongsTo(Pengunjung::class, 'id_pengunjung');
     }
 
+    // Relasi ke pelayanan
     public function pelayanan()
     {
         return $this->belongsTo(Pelayanan::class, 'id_pelayanan');
