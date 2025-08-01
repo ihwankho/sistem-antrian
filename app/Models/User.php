@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'role',
         'id_loket',
+        'foto',
     ];
 
     protected $hidden = [
@@ -34,5 +35,16 @@ class User extends Authenticatable
     public function loket()
     {
         return $this->belongsTo(Loket::class, 'id_loket');
+    }
+    public function departemen()
+    {
+        return $this->hasOneThrough(
+            Departemen::class,
+            Loket::class,
+            'id',        // id di lokets
+            'id_loket',  // foreign key di departemens
+            'id_loket',  // foreign key di users
+            'id'         // id di lokets
+        );
     }
 }

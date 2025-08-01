@@ -18,7 +18,7 @@ class AntrianController extends Controller
     {
         DB::beginTransaction();
         try {
-            // 1. Validasi input
+            // 1. Validasi input (tambahkan validasi foto)
             $validated = $request->validate([
                 'nama_pengunjung' => 'required|string|max:255',
                 'nik' => 'required|string|max:16',
@@ -26,22 +26,37 @@ class AntrianController extends Controller
                 'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
                 'alamat' => 'nullable|string',
                 'id_pelayanan' => 'required|exists:pelayanans,id',
+                'foto_ktp' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'foto_wajah' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             ]);
 
-            // 2. Simpan data pengunjung
+            // 2. Simpan file jika ada
+            $fotoKtpPath = null;
+            $fotoWajahPath = null;
+
+            if ($request->hasFile('foto_ktp')) {
+                $fotoKtpPath = $request->file('foto_ktp')->store('ktp', 'public');
+            }
+            if ($request->hasFile('foto_wajah')) {
+                $fotoWajahPath = $request->file('foto_wajah')->store('wajah', 'public');
+            }
+
+            // 3. Simpan data pengunjung
             $pengunjung = Pengunjung::create([
                 'nama_pengunjung' => $validated['nama_pengunjung'],
                 'nik' => $validated['nik'],
                 'no_hp' => $validated['no_hp'] ?? null,
                 'jenis_kelamin' => $validated['jenis_kelamin'],
-                'alamat' => $validated['alamat'] ?? null
+                'alamat' => $validated['alamat'] ?? null,
+                'foto_ktp' => $fotoKtpPath,
+                'foto_wajah' => $fotoWajahPath
             ]);
 
-            // 3. Ambil pelayanan + relasinya
+            // 4. Ambil pelayanan + relasinya
             $pelayanan = Pelayanan::with('departemen.loket')->findOrFail($validated['id_pelayanan']);
             $idLoket = $pelayanan->departemen->loket->id;
 
-            // 4. Tentukan nomor urut terakhir untuk loket ini (per hari)
+            // 5. Tentukan nomor urut terakhir untuk loket ini (per hari)
             $lastQueue = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->where('departemens.id_loket', $idLoket)
@@ -50,7 +65,7 @@ class AntrianController extends Controller
 
             $nomorAntrian = $lastQueue ? $lastQueue + 1 : 1;
 
-            // 5. Simpan data antrian (angka murni)
+            // 6. Simpan data antrian (angka murni)
             $antrian = Antrian::create([
                 'nomor_antrian' => $nomorAntrian,
                 'status_antrian' => 1, // 1 = menunggu
@@ -58,21 +73,23 @@ class AntrianController extends Controller
                 'id_pelayanan' => $pelayanan->id
             ]);
 
-            // 6. Tentukan kode huruf loket (berdasarkan urutan id ASC)
+            // 7. Tentukan kode huruf loket (berdasarkan urutan id ASC)
             $lokets = DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
             $loketIndex = array_search($idLoket, $lokets); // posisi loket
             $kodeHuruf = chr(65 + $loketIndex); // A=65, B=66, dst
 
-            // 7. Gabungkan jadi kode antrian final (misalnya A001)
+            // 8. Gabungkan jadi kode antrian final (misalnya A001)
             $kodeAntrian = $kodeHuruf . str_pad($nomorAntrian, 3, '0', STR_PAD_LEFT);
 
             DB::commit();
 
-            // 8. Buat tiket (pakai kode yang sudah digenerate)
+            // 9. Buat tiket (pakai kode yang sudah digenerate)
             $tiket = [
                 'nomor_antrian' => $kodeAntrian,
                 'nama_departemen' => $pelayanan->departemen->nama_departemen ?? null,
-                'nama_loket' => $pelayanan->departemen->loket->nama_loket ?? null
+                'nama_loket' => $pelayanan->departemen->loket->nama_loket ?? null,
+                'foto_ktp' => $pengunjung->foto_ktp ? asset('storage/' . $pengunjung->foto_ktp) : null,
+                'foto_wajah' => $pengunjung->foto_wajah ? asset('storage/' . $pengunjung->foto_wajah) : null,
             ];
 
             return response()->json([
@@ -89,6 +106,7 @@ class AntrianController extends Controller
             ], 500);
         }
     }
+
 
 
     //Daftar antrian berdasarkan loket
@@ -198,6 +216,124 @@ class AntrianController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Terjadi kesalahan saat mengambil data antrian',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Panggil Antrian
+    public function callNextAntrian(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            // Validasi input
+            $validated = $request->validate([
+                'id_loket' => 'required|exists:lokets,id',
+            ]);
+
+            $idLoket = $validated['id_loket'];
+
+            // Cek apakah masih ada antrian yang statusnya 2 (sedang dipanggil) di loket ini
+            $currentCalling = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+                ->where('departemens.id_loket', $idLoket)
+                ->where('antrians.status_antrian', 2)
+                ->first();
+
+            if ($currentCalling) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Masih ada antrian yang sedang dipanggil di loket ini. Selesaikan dulu sebelum memanggil berikutnya.'
+                ], 409);
+            }
+
+            // Ambil antrian berikutnya yang menunggu (status 1)
+            $nextAntrian = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+                ->where('departemens.id_loket', $idLoket)
+                ->where('antrians.status_antrian', 1)
+                ->orderBy('antrians.nomor_antrian', 'asc')
+                ->select('antrians.*')
+                ->first();
+
+            if (!$nextAntrian) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada antrian menunggu di loket ini'
+                ], 404);
+            }
+
+            // Update status jadi 2 (dipanggil)
+            $nextAntrian->status_antrian = 2;
+            $nextAntrian->save();
+
+            // Buat kode huruf loket
+            $lokets = DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
+            $loketIndex = array_search($idLoket, $lokets);
+            $kodeHuruf = chr(65 + $loketIndex);
+            $kodeAntrian = $kodeHuruf . str_pad($nextAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Antrian berhasil dipanggil',
+                'data' => [
+                    'id' => $nextAntrian->id,
+                    'kode_antrian' => $kodeAntrian,
+                    'nomor_antrian' => $nextAntrian->nomor_antrian,
+                    'status' => $nextAntrian->status_antrian,
+                ]
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat memanggil antrian',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function finishAntrian(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            // Validasi input
+            $validated = $request->validate([
+                'id_antrian' => 'required|exists:antrians,id',
+            ]);
+
+            // Cari antrian
+            $antrian = Antrian::find($validated['id_antrian']);
+
+            if (!$antrian || $antrian->status_antrian != 2) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Antrian tidak ditemukan atau tidak sedang dipanggil'
+                ], 404);
+            }
+
+            // Update status jadi 3 (selesai)
+            $antrian->status_antrian = 3;
+            $antrian->save();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Antrian berhasil diselesaikan',
+                'data' => [
+                    'id' => $antrian->id,
+                    'nomor_antrian' => $antrian->nomor_antrian,
+                    'status' => $antrian->status_antrian
+                ]
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat menyelesaikan antrian',
                 'error' => $e->getMessage()
             ], 500);
         }

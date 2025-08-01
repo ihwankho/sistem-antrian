@@ -42,3 +42,5 @@ Route::get('/antrian', [AntrianController::class, 'index']);
 Route::post('/antrian', [AntrianController::class, 'store']);
 Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);
 Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
+Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']); //panggil antrian
+Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']); //antrian selesai

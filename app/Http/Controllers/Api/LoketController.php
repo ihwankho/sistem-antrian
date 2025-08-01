@@ -68,14 +68,18 @@ class LoketController extends Controller
     public function show($id)
     {
         try {
-            $loket = Loket::findOrFail($id);
-
+            $loket = Loket::with([
+                'departemens:id,id_loket,nama_departemen',
+                'pelayanans' => function ($query) {
+                    $query->select('pelayanans.id', 'pelayanans.nama_layanan', 'pelayanans.id_departemen');
+                }
+            ])->findOrFail($id);
             return response()->json([
                 'status' => true,
                 'message' => 'Data loket berhasil diambil',
                 'data' => $loket
             ], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Loket tidak ditemukan',
@@ -83,6 +87,7 @@ class LoketController extends Controller
             ], 404);
         }
     }
+
 
     // PUT /lokets/{id}
     public function update(Request $request, $id)
