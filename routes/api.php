@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\PelayananController;
 use App\Http\Controllers\Api\PengunjungController;
 use App\Http\Controllers\Api\LoketController;
 use App\Http\Controllers\Api\AntrianController;
+use App\Http\Controllers\Api\PanduanController;
 use Illuminate\Support\Facades\DB;
 use App\Models\Pelayanan;
 
@@ -37,6 +38,9 @@ Route::apiResource('pengunjung', PengunjungController::class);
 //Loket
 Route::apiResource('lokets', LoketController::class);
 
+//Panduan
+Route::apiResource('panduan', PanduanController::class);
+
 //Antrian
 Route::get('/antrian', [AntrianController::class, 'index']);
 Route::post('/antrian', [AntrianController::class, 'store']);
@@ -44,3 +48,4 @@ Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']
 Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
 Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']); //panggil antrian
 Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']); //antrian selesai
+Route::post('antrian/skip', [AntrianController::class, 'SkipAntrian']); //Skip Antrian

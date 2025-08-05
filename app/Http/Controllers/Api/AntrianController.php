@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Antrian;
 use App\Models\Pengunjung;
 use App\Models\Pelayanan;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Expr\Cast;
 
 
 class AntrianController extends Controller
@@ -335,6 +337,40 @@ class AntrianController extends Controller
                 'status' => false,
                 'message' => 'Terjadi kesalahan saat menyelesaikan antrian',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    //Skip Antrian
+    public function SkipAntrian(request $request)
+    {
+        $request->validate([
+            'id_antrian' => 'required|exists:antrians,id',
+        ]);
+        try {
+            $antrian = DB::transaction(function () use ($request) {
+                $antrian = Antrian::findOrFail($request->id_antrian);
+                if ($antrian->status_antrian != 2) {
+                    abort(404, 'antrian tidak ditemukan atau tidak sedang dipanggil');
+                }
+                $antrian->update([
+                    'status_antrian' => 4
+                ]);
+                return $antrian;
+            });
+            return response()->json([
+                'status' => true,
+                'message' => 'antrian berhasil dilewati',
+                'data' => [
+                    'id' => $antrian->id,
+                    'nomor_antrian' => $antrian->nomor_antrian,
+                    'status' => $antrian->status_antrian
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'gagal melewati antrian',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
