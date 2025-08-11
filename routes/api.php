@@ -49,3 +49,5 @@ Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
 Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']); //panggil antrian
 Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']); //antrian selesai
 Route::post('antrian/skip', [AntrianController::class, 'SkipAntrian']); //Skip Antrian
+Route::post('/antrian/recall', [AntrianController::class, 'recallAntrian']); // Panggil Ulang
+Route::get('/antrian/loket', [AntrianController::class, 'getAntrianDipanggil']); // nama loket serta antrian nya

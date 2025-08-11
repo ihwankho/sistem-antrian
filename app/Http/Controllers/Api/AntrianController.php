@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Antrian;
 use App\Models\Pengunjung;
 use App\Models\Pelayanan;
+use App\Models\Loket;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -228,12 +229,14 @@ class AntrianController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Validasi input
             $validated = $request->validate([
                 'id_loket' => 'required|exists:lokets,id',
             ]);
 
             $idLoket = $validated['id_loket'];
+
+            // Ambil info loket
+            $loket = Loket::findOrFail($idLoket);
 
             // Cek apakah masih ada antrian yang statusnya 2 (sedang dipanggil) di loket ini
             $currentCalling = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
@@ -274,6 +277,7 @@ class AntrianController extends Controller
             $loketIndex = array_search($idLoket, $lokets);
             $kodeHuruf = chr(65 + $loketIndex);
             $kodeAntrian = $kodeHuruf . str_pad($nextAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
+            $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
 
             DB::commit();
 
@@ -285,6 +289,8 @@ class AntrianController extends Controller
                     'kode_antrian' => $kodeAntrian,
                     'nomor_antrian' => $nextAntrian->nomor_antrian,
                     'status' => $nextAntrian->status_antrian,
+                    'loket' => $loket->nama_loket, // nama loket asli
+                    'voice_text' => "Silakan antrian $kodeAntrianSpasi menuju ke loket $loket->nama_loket"
                 ]
             ], 200);
         } catch (\Throwable $e) {
@@ -296,6 +302,7 @@ class AntrianController extends Controller
             ], 500);
         }
     }
+
 
     public function finishAntrian(Request $request)
     {
@@ -371,6 +378,109 @@ class AntrianController extends Controller
                 'status' => false,
                 'message' => 'gagal melewati antrian',
                 'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    //Panggil ulang antrian
+    public function recallAntrian(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'id_loket' => 'required|exists:lokets,id',
+            ]);
+
+            $idLoket = $validated['id_loket'];
+
+            // Cari antrian yang sedang dipanggil (status = 2)
+            $currentAntrian = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+                ->where('departemens.id_loket', $idLoket)
+                ->where('antrians.status_antrian', 2)
+                ->select('antrians.*')
+                ->first();
+
+            if (!$currentAntrian) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada antrian yang sedang dipanggil untuk dipanggil ulang.'
+                ], 404);
+            }
+
+            // Ambil nama loket
+            $loket = Loket::find($idLoket);
+            $kodeLoket = $loket->nama_loket ?? 'Loket';
+
+            // Ambil kode huruf (A, B, dst) untuk id loket
+            $lokets = Loket::orderBy('id')->pluck('id')->toArray();
+            $loketIndex = array_search($idLoket, $lokets);
+            $kodeHuruf = chr(65 + $loketIndex);
+            $kodeAntrian = $kodeHuruf . str_pad($currentAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Antrian berhasil dipanggil ulang',
+                'data' => [
+                    'id' => $currentAntrian->id,
+                    'kode_antrian' => $kodeAntrian,
+                    'nomor_antrian' => $currentAntrian->nomor_antrian,
+                    'status' => $currentAntrian->status_antrian,
+                    'loket' => $kodeLoket,
+                    'voice_text' => "Silakan antrian $kodeAntrian menuju $kodeLoket"
+                ]
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat memanggil ulang antrian',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function getAntrianDipanggil()
+    {
+        try {
+            // Ambil semua loket
+            $lokets = DB::table('lokets')->orderBy('id', 'ASC')->get();
+
+            // Ambil antrian yang sedang dipanggil (status = 2)
+            $antrians = DB::table('antrians')
+                ->where('antrians.status_antrian', 2)
+                ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+                ->join('lokets', 'departemens.id_loket', '=', 'lokets.id')
+                ->select(
+                    'antrians.nomor_antrian',
+                    'lokets.id as id_loket',
+                    'lokets.nama_loket'
+                )
+                ->get();
+
+            // Gabungkan data loket dan antrian yang sedang dipanggil
+            $result = $lokets->map(function ($loket, $index) use ($antrians) {
+                $antrian = $antrians->firstWhere('id_loket', $loket->id);
+
+                $kodeHuruf = chr(65 + $index); // A, B, C, ...
+                $kodeAntrian = $antrian
+                    ? $kodeHuruf . str_pad($antrian->nomor_antrian, 3, '0', STR_PAD_LEFT)
+                    : null;
+
+                return [
+                    'loket' => $loket->nama_loket,
+                    'kode_antrian' => $kodeAntrian
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Data antrian yang sedang dipanggil berhasil diambil',
+                'data' => $result
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data antrian yang sedang dipanggil',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
