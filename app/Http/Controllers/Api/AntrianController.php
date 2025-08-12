@@ -91,8 +91,8 @@ class AntrianController extends Controller
                 'nomor_antrian' => $kodeAntrian,
                 'nama_departemen' => $pelayanan->departemen->nama_departemen ?? null,
                 'nama_loket' => $pelayanan->departemen->loket->nama_loket ?? null,
-                'foto_ktp' => $pengunjung->foto_ktp ? asset('storage/' . $pengunjung->foto_ktp) : null,
-                'foto_wajah' => $pengunjung->foto_wajah ? asset('storage/' . $pengunjung->foto_wajah) : null,
+                //'foto_ktp' => $pengunjung->foto_ktp ? asset('storage/' . $pengunjung->foto_ktp) : null,
+                //'foto_wajah' => $pengunjung->foto_wajah ? asset('storage/' . $pengunjung->foto_wajah) : null,
             ];
 
             return response()->json([
@@ -232,19 +232,24 @@ class AntrianController extends Controller
             $validated = $request->validate([
                 'id_loket' => 'required|exists:lokets,id',
             ]);
-
             $idLoket = $validated['id_loket'];
 
             // Ambil info loket
             $loket = Loket::findOrFail($idLoket);
 
-            // Cek apakah masih ada antrian yang statusnya 2 (sedang dipanggil) di loket ini
-            $currentCalling = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+            // Optimasi query - ambil semua antrian dengan status 1 dan 2 sekaligus
+            $antrianData = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->where('departemens.id_loket', $idLoket)
-                ->where('antrians.status_antrian', 2)
-                ->first();
+                ->whereIn('antrians.status_antrian', [1, 2])
+                ->whereDate('antrians.created_at', now()->toDateString())
+                ->orderBy('antrians.status_antrian', 'desc') // status 2 dulu, baru 1
+                ->orderBy('antrians.nomor_antrian', 'asc')
+                ->select('antrians.*')
+                ->get();
 
+            // Cek apakah masih ada antrian yang statusnya 2 (sedang dipanggil)
+            $currentCalling = $antrianData->where('status_antrian', 2)->first();
             if ($currentCalling) {
                 return response()->json([
                     'status' => false,
@@ -253,14 +258,7 @@ class AntrianController extends Controller
             }
 
             // Ambil antrian berikutnya yang menunggu (status 1)
-            $nextAntrian = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
-                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
-                ->where('departemens.id_loket', $idLoket)
-                ->where('antrians.status_antrian', 1)
-                ->orderBy('antrians.nomor_antrian', 'asc')
-                ->select('antrians.*')
-                ->first();
-
+            $nextAntrian = $antrianData->where('status_antrian', 1)->first();
             if (!$nextAntrian) {
                 return response()->json([
                     'status' => false,
@@ -272,9 +270,15 @@ class AntrianController extends Controller
             $nextAntrian->status_antrian = 2;
             $nextAntrian->save();
 
-            // Buat kode huruf loket
+            // Buat kode huruf loket dengan defensive programming
             $lokets = DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
             $loketIndex = array_search($idLoket, $lokets);
+
+            // Defensive programming untuk array index
+            if ($loketIndex === false) {
+                throw new \Exception('Loket tidak ditemukan dalam urutan');
+            }
+
             $kodeHuruf = chr(65 + $loketIndex);
             $kodeAntrian = $kodeHuruf . str_pad($nextAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
             $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
@@ -416,7 +420,7 @@ class AntrianController extends Controller
             $loketIndex = array_search($idLoket, $lokets);
             $kodeHuruf = chr(65 + $loketIndex);
             $kodeAntrian = $kodeHuruf . str_pad($currentAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
-
+            $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
             return response()->json([
                 'status' => true,
                 'message' => 'Antrian berhasil dipanggil ulang',
@@ -426,7 +430,7 @@ class AntrianController extends Controller
                     'nomor_antrian' => $currentAntrian->nomor_antrian,
                     'status' => $currentAntrian->status_antrian,
                     'loket' => $kodeLoket,
-                    'voice_text' => "Silakan antrian $kodeAntrian menuju $kodeLoket"
+                    'voice_text' => "Silakan antrian $kodeAntrianSpasi menuju ke loket $kodeLoket"
                 ]
             ], 200);
         } catch (\Throwable $e) {
