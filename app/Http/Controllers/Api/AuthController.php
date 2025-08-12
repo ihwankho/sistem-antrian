@@ -27,6 +27,12 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Hapus token lama (agar hanya bisa login di 1 device)
+            $user->tokens()->delete();
+
+            // Buat token baru
+            $token = $user->createToken('auth_token')->plainTextToken;
+
             return response()->json([
                 'status' => true,
                 'message' => 'Login berhasil',
@@ -34,7 +40,8 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'nama' => $user->nama,
                     'nama_pengguna' => $user->nama_pengguna,
-                    'role' => $user->role
+                    'role' => $user->role,
+                    'token' => $token
                 ]
             ]);
         } catch (Exception $e) {
@@ -49,8 +56,18 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            
+            $request->user()->currentAccessToken()->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Logout berhasil'
+            ]);
         } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan pada server',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
