@@ -9,45 +9,60 @@ use App\Http\Controllers\Api\PengunjungController;
 use App\Http\Controllers\Api\LoketController;
 use App\Http\Controllers\Api\AntrianController;
 use App\Http\Controllers\Api\PanduanController;
-use Illuminate\Support\Facades\DB;
-use App\Models\Pelayanan;
 
+// ======================
+// ROUTE PUBLIK (TANPA LOGIN)
+// ======================
+
+// Tes koneksi
 Route::get('/test-api', function () {
     return 'API terhubung!';
 });
 
-Route::post('/users', [UserController::class, 'store']);
-Route::get('/users/showall', [UserController::class, 'index']);
-Route::get('/users/{id}', [UserController::class, 'show']);
+// Login
 Route::post('/login', [AuthController::class, 'login']);
-Route::put('/users/{id}', [UserController::class, 'update']); // Edit user
-Route::delete('/users/{id}', [UserController::class, 'destroy']); // Hapus user
-Route::get('/users-loket', [UserController::class, 'getUsLok']); //data user x nama loket
 
 
-//Departemen
-Route::apiResource('departemen', DepartemenController::class);
-Route::get('/departemen-loket', [DepartemenController::class, 'getDepLok']);
+// ======================
+// ROUTE DENGAN TOKEN (DEFAULT SEMUA LOGIN)
+// ======================
+Route::middleware('auth:sanctum')->group(function () {
 
-//Pelayanan
-Route::apiResource('pelayanan', PelayananController::class);
-Route::get('/pelayanan-departemen', [PelayananController::class, 'getPelaDep']);
-//pengunjung
-Route::apiResource('pengunjung', PengunjungController::class);
+    // Logout
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-//Loket
-Route::apiResource('lokets', LoketController::class);
+    // CRUD User
+    Route::post('/users', [UserController::class, 'store']);
+    Route::get('/users/showall', [UserController::class, 'index']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    Route::get('/users-loket', [UserController::class, 'getUsLok']);
 
-//Panduan
-Route::apiResource('panduan', PanduanController::class);
+    // Departemen & Pelayanan
+    Route::apiResource('departemen', DepartemenController::class);
+    Route::get('/departemen-loket', [DepartemenController::class, 'getDepLok']);
 
-//Antrian
-Route::get('/antrian', [AntrianController::class, 'index']);
-Route::post('/antrian', [AntrianController::class, 'store']);
-Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);
-Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
-Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']); //panggil antrian
-Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']); //antrian selesai
-Route::post('antrian/skip', [AntrianController::class, 'SkipAntrian']); //Skip Antrian
-Route::post('/antrian/recall', [AntrianController::class, 'recallAntrian']); // Panggil Ulang
-Route::get('/antrian/loket', [AntrianController::class, 'getAntrianDipanggil']); // nama loket serta antrian nya
+    Route::apiResource('pelayanan', PelayananController::class);
+    Route::get('/pelayanan-departemen', [PelayananController::class, 'getPelaDep']);
+
+    // Loket
+    Route::apiResource('lokets', LoketController::class);
+
+    // Panduan
+    Route::apiResource('panduan', PanduanController::class);
+
+    // Pengunjung
+    Route::apiResource('pengunjung', PengunjungController::class);
+
+    // Antrian
+    Route::get('/antrian', [AntrianController::class, 'index']);
+    Route::post('/antrian', [AntrianController::class, 'store']);
+    Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
+    Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);
+    Route::get('/antrian/loket', [AntrianController::class, 'getAntrianDipanggil']);
+    Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']);
+    Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']);
+    Route::post('/antrian/skip', [AntrianController::class, 'SkipAntrian']);
+    Route::post('/antrian/recall', [AntrianController::class, 'recallAntrian']);
+});
