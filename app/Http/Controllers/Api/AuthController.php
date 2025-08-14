@@ -41,7 +41,8 @@ class AuthController extends Controller
                     'nama' => $user->nama,
                     'nama_pengguna' => $user->nama_pengguna,
                     'role' => $user->role,
-                    'token' => $token
+                    'token' => $token,
+                    'id_loket' => $user->id_loket
                 ]
             ]);
         } catch (Exception $e) {
