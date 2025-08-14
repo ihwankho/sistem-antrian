@@ -27,11 +27,11 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            // Hapus token lama (agar hanya bisa login di 1 device)
+            // Hapus semua token lama
             $user->tokens()->delete();
 
-            // Buat token baru
-            $token = $user->createToken('auth_token')->plainTextToken;
+            // Buat token baru untuk Sanctum
+            $token = $user->createToken('API Token')->plainTextToken;
 
             return response()->json([
                 'status' => true,
@@ -41,7 +41,8 @@ class AuthController extends Controller
                     'nama' => $user->nama,
                     'nama_pengguna' => $user->nama_pengguna,
                     'role' => $user->role,
-                    'token' => $token
+                    'token' => $token,
+                    'id_loket' => $user->id_loket
                 ]
             ]);
         } catch (Exception $e) {
@@ -52,6 +53,7 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
 
     public function logout(Request $request)
     {
