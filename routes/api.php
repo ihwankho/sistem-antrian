@@ -38,6 +38,8 @@ Route::get('/antrian/loket', [AntrianController::class, 'getAntrianDipanggil']);
 
 
 
+
+
 // ======================
 // ROUTE DENGAN TOKEN (DEFAULT SEMUA LOGIN)
 // ======================
@@ -73,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Antrian
     Route::get('/antrian', [AntrianController::class, 'index']);
+    Route::get('/antrian/pengunjung/{id}', [AntrianController::class, 'ShowPe']); //Antrian x pengunjung
 
     Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
     Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);

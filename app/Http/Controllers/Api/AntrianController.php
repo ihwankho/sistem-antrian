@@ -488,4 +488,18 @@ class AntrianController extends Controller
             ], 500);
         }
     }
+
+    //ambil data antrian dan pengunjung
+    public function ShowPe($id)
+    {
+        try {
+            $antrian = Antrian::with(['pengunjung'])->findOrFail($id);
+            return response()->json($antrian);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'data antrian tidak ditemukan',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
 }
