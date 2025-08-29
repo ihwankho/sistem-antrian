@@ -1,11 +1,9 @@
 <?php
 
-use App\Http\Controllers\LoginWebController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthWebController;
 
-Route::get('/login', [LoginWebController::class, 'showLogin'])->name('login.form');
-Route::post('/login', [LoginWebController::class, 'login'])->name('login.web');
-
-Route::get('/dashboard', function () {
-    return 'Selamat datang di dashboard!';
-})->middleware('auth');
+Route::get('/', [AuthWebController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthWebController::class, 'login'])->name('login.submit');
+Route::get('/dashboard', [AuthWebController::class, 'dashboard'])->name('dashboard');
+Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
