@@ -1,5 +1,6 @@
 <?php
 
+
 use App\Http\Controllers\LoginWebController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -99,3 +100,4 @@ Route::prefix('display')->name('display.')->group(function() {
     // Endpoint untuk testing koneksi
     Route::get('/ping', [DisplayController::class, 'ping'])->name('ping');
 });
+

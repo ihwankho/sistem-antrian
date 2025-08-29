@@ -11,6 +11,7 @@ use App\Models\Loket;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use PhpParser\Node\Expr\Cast;
 
 
@@ -500,6 +501,38 @@ class AntrianController extends Controller
                 'message' => 'data antrian tidak ditemukan',
                 'error' => $e->getMessage()
             ], 404);
+        }
+    }
+    public function laporanBulanan(Request $request)
+    {
+        try {
+            $bulan = $request->input('bulan', Carbon::now()->month);
+            $tahun = $request->input('tahun', Carbon::now()->year);
+
+            $data = DB::table('antrians')
+                ->selectRaw('DATE(created_at) as tanggal')
+                ->selectRaw('COUNT(*) as total_antrian')
+                ->selectRaw('SUM(CASE WHEN status_antrian = 3 THEN 1 ELSE 0 END) as selesai')
+                ->selectRaw('SUM(CASE WHEN status_antrian = 4 THEN 1 ELSE 0 END) as skip')
+                ->whereMonth('created_at', $bulan)
+                ->whereYear('created_at', $tahun)
+                ->groupBy('tanggal')
+                ->orderBy('tanggal', 'ASC')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Laporan bulanan berhasil diambil',
+                'bulan' => $bulan,
+                'tahun' => $tahun,
+                'data' => $data
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat mengambil laporan',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
