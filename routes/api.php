@@ -84,4 +84,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']);
     Route::post('/antrian/skip', [AntrianController::class, 'SkipAntrian']);
     Route::post('/antrian/recall', [AntrianController::class, 'recallAntrian']);
+
+    Route::get('/laporan-bulanan', [AntrianController::class, 'laporanBulanan']);
 });

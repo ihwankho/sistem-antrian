@@ -1,3 +1,4 @@
+
 @extends('layouts.landing')
 
 @push('styles')

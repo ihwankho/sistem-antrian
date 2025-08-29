@@ -60,20 +60,14 @@ class DepartemenController extends Controller
         try {
             $departemen = Departemen::findOrFail($id);
 
-            $validator = Validator::make($request->all(), [
-                'nama_departemen' => 'required|string|unique:departemens,nama_departemen,' . $id
+            // Validasi fleksibel: hanya jika field dikirim
+            $validated = $request->validate([
+                'nama_departemen' => 'sometimes|string|unique:departemens,nama_departemen,' . $id . ',id',
+                'id_loket' => 'sometimes|exists:lokets,id'
             ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Validasi gagal',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $departemen->nama_departemen = $request->nama_departemen;
-            $departemen->save();
+            // Update hanya field yang dikirim
+            $departemen->update($validated);
 
             return response()->json([
                 'status' => true,
@@ -88,6 +82,7 @@ class DepartemenController extends Controller
             ], 500);
         }
     }
+
 
     public function destroy($id)
     {

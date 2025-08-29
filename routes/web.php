@@ -1,5 +1,6 @@
 <?php
 
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LoginWebController;
 use App\Http\Controllers\DashboardController;
