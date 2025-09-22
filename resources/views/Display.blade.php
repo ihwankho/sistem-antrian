@@ -4,9 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Antrian Digital</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
+        :root {
+            --primary-green: #0A4531;
+            --accent-gold: #DA9928;
+            --bg-light: #F8F9FA;
+            --bg-card: #FFFFFF;
+            --text-dark: #212529;
+            --text-light: #FFFFFF;
+            --text-gray: #6C757D;
+            --border-color: #E9ECEF;
+            --font-heading: 'Poppins', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --shadow-sm: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,164 +30,109 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            font-family: var(--font-body);
+            background-color: var(--bg-light);
             min-height: 100vh;
             padding: 20px;
-            color: #1e293b;
-            overflow-x: hidden;
+            color: var(--text-dark);
+            overflow: hidden;
+            /* Tambahkan padding bawah untuk ruang running text */
+            padding-bottom: 60px;
         }
 
         .container {
             max-width: 1800px;
             margin: 0 auto;
-            height: calc(100vh - 40px);
+            height: calc(100vh - 40px - 40px); /* Disesuaikan dengan padding body */
             display: grid;
-            grid-template-columns: 70% 30%;
+            grid-template-columns: 1fr 380px;
             grid-template-rows: auto 1fr;
             gap: 20px;
-            position: relative;
         }
 
         /* Header */
         .header {
-            background: #ffffff;
+            background: var(--bg-card);
             grid-column: 1 / -1;
-            border-radius: 20px;
-            padding: 25px 40px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
-            position: relative;
-            overflow: hidden;
+            border-radius: 16px;
+            padding: 20px 30px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
         }
-
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #1d4ed8;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
+        
+        .header-info h1 {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin: 0;
+        }
+        
+        .header-info .subtitle {
+            font-size: 1rem;
+            color: var(--text-gray);
+            font-weight: 500;
         }
 
-        .header .subtitle {
-            font-size: 1.2rem;
-            color: #64748b;
-            font-weight: 400;
-            max-width: 600px;
-            margin: 0 auto 15px;
-            line-height: 1.5;
+        .header-time-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
 
         .current-time {
             font-size: 1.1rem;
-            color: #475569;
-            font-weight: 500;
-            margin-top: 8px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #f1f5f9;
-            padding: 8px 16px;
-            border-radius: 50px;
-        }
-
-        .live-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 6px 14px;
-            border-radius: 50px;
+            color: var(--text-dark);
             font-weight: 600;
-            font-size: 0.85rem;
-            margin-top: 10px;
-            animation: pulseLive 2s infinite;
-        }
-
-        .live-indicator::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: #dc2626;
-            border-radius: 50%;
-        }
-
-        @keyframes pulseLive {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        /* Main Content - Left Side */
-        .main-display {
-            background: #ffffff;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
             display: flex;
-            flex-direction: column;
-            gap: 25px;
+            align-items: center;
+            gap: 10px;
+        }
+        .current-time .material-icons {
+            color: var(--primary-green);
+        }
+
+        /* Main Display - Left Side */
+        .main-display {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
             justify-content: center;
         }
 
         .current-call {
+            width: 100%;
+            height: 100%;
             text-align: center;
-            padding: 40px;
-            background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
-            border-radius: 20px;
-            color: white;
-            box-shadow: 0 10px 30px rgba(29, 78, 216, 0.2);
-            position: relative;
-            overflow: hidden;
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            min-height: 600px;
-        }
-
-        .current-call::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.3) 100%);
-            background-size: 200% 100%;
-            animation: gradientLine 3s infinite linear;
-        }
-
-        @keyframes gradientLine {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        .current-call-header {
+            background: var(--primary-green);
+            border-radius: 16px;
+            color: var(--text-light);
+            box-shadow: var(--shadow-lg);
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            justify-content: space-between;
+            padding: 40px;
+            animation: fadeIn 1s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
         .current-call-title {
-            font-size: 1.5rem;
+            font-family: var(--font-heading);
+            font-size: 2rem;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
             opacity: 0.9;
-        }
-
-        .current-call-subtitle {
-            font-size: 1rem;
-            opacity: 0.8;
-            font-weight: 400;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            padding-bottom: 20px;
         }
 
         .current-call-content {
@@ -179,97 +140,71 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            padding: 20px 0;
-        }
-
-        .number-container {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 30px 50px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            gap: 10px;
         }
 
         .current-number-display {
-            font-size: 7rem;
-            font-weight: 900;
-            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            animation: numberPulse 2s infinite;
-            letter-spacing: -2px;
+            font-family: var(--font-heading);
+            font-size: clamp(6rem, 15vw, 12rem);
+            font-weight: 800;
+            line-height: 1;
+            color: var(--accent-gold);
+            text-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            animation: numberPulse 1.5s infinite;
         }
 
         @keyframes numberPulse {
-            0%, 100% { transform: scale(1); text-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); }
-            50% { transform: scale(1.05); text-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
         }
 
         .current-call-footer {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            border-top: 2px solid rgba(255,255,255,0.2);
             padding-top: 20px;
-            border-top: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         .current-loket-display {
-            font-size: 2.2rem;
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px 30px;
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
-        }
-
-        .call-instruction {
-            font-size: 1.1rem;
-            opacity: 0.85;
-            font-weight: 500;
-            animation: fadeInOut 3s infinite;
-        }
-
-        @keyframes fadeInOut {
-            0%, 100% { opacity: 0.85; }
-            50% { opacity: 1; }
+            gap: 15px;
         }
 
         .sound-wave {
             display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            margin-left: 15px;
+            align-items: flex-end;
+            gap: 4px;
+            height: 24px;
         }
 
         .sound-wave span {
             display: block;
-            width: 4px;
-            height: 16px;
-            background: currentColor;
-            animation: wave 1.2s infinite;
+            width: 5px;
+            background: var(--accent-gold);
+            animation: wave 1.2s infinite ease-in-out;
             border-radius: 2px;
         }
 
-        .sound-wave span:nth-child(2) { animation-delay: 0.2s; }
-        .sound-wave span:nth-child(3) { animation-delay: 0.4s; }
-        .sound-wave span:nth-child(4) { animation-delay: 0.6s; }
+        .sound-wave span:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+        .sound-wave span:nth-child(2) { height: 18px; animation-delay: 0.2s; }
+        .sound-wave span:nth-child(3) { height: 24px; animation-delay: 0.3s; }
+        .sound-wave span:nth-child(4) { height: 15px; animation-delay: 0.4s; }
 
         @keyframes wave {
-            0%, 100% { transform: scaleY(1); }
-            50% { transform: scaleY(0.3); }
+            0%, 100% { transform: scaleY(0.2); }
+            50% { transform: scaleY(1); }
         }
 
         /* Right Side - Loket List */
         .loket-list {
-            background: #ffffff;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -277,160 +212,82 @@
         }
 
         .loket-list-header {
-            font-size: 1.5rem;
+            font-family: var(--font-heading);
+            font-size: 1.3rem;
             font-weight: 700;
-            color: #1d4ed8;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            color: var(--primary-green);
             padding-bottom: 15px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .loket-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 15px; /* Mengurangi gap antar kartu */
+            gap: 15px;
         }
 
         .loket-card {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 15px; /* Mengurangi padding */
-            border: 1px solid #e2e8f0;
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
             transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            gap: 10px; /* Mengurangi gap antar elemen dalam kartu */
-            text-align: center;
-            min-height: 180px; /* Menetapkan tinggi minimum untuk konsistensi */
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            grid-template-rows: auto auto;
+            align-items: center;
+            gap: 5px 15px;
         }
 
         .loket-card.active {
-            border-color: #1d4ed8;
-            background: rgba(29, 78, 216, 0.05);
-            box-shadow: 0 8px 25px rgba(29, 78, 216, 0.15);
-            transform: translateY(-2px);
+            border-left: 5px solid var(--accent-gold);
+            background: #fffbeb;
         }
 
         .loket-name {
-            font-size: 1.2rem; /* Mengurangi ukuran font */
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 5px; /* Mengurangi margin */
-        }
-
-        .loket-status {
-            font-size: 0.85rem; /* Mengurangi ukuran font */
-            padding: 5px 12px; /* Mengurangi padding */
-            border-radius: 50px;
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
             font-weight: 600;
-            display: inline-block;
-            margin: 0 auto 10px; /* Mengurangi margin */
-            width: fit-content;
-        }
-
-        .loket-status.calling {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .loket-status.waiting {
-            background: #fffbeb;
-            color: #b45309;
-        }
-
-        .loket-status.idle {
-            background: #f1f5f9;
-            color: #64748b;
+            color: var(--text-dark);
         }
 
         .current-number {
-            font-size: 2rem; /* Mengurangi ukuran font */
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            font-size: 2.2rem;
             font-weight: 800;
-            color: #1d4ed8;
-            padding: 10px 0; /* Mengurangi padding */
-            flex-grow: 1;
+            color: var(--primary-green);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .current-number.empty {
-            color: #cbd5e1;
-            font-size: 1.5rem; /* Mengurangi ukuran font */
-        }
+        .current-number.empty { color: var(--text-gray); font-size: 1.8rem; }
+        
+        .loket-card.active .current-number { color: var(--accent-gold); }
 
-        .next-title {
-            font-size: 0.85rem; /* Mengurangi ukuran font */
-            color: #64748b;
-            font-weight: 600;
-            margin-top: 5px; /* Mengurangi margin */
-            margin-bottom: 5px; /* Mengurangi margin */
-        }
-
-        .next-numbers {
-            display: flex;
-            gap: 8px; /* Mengurangi gap */
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .next-number {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 6px 12px; /* Mengurangi padding */
-            font-weight: 600;
-            font-size: 0.85rem; /* Mengurangi ukuran font */
-            color: #475569;
-        }
-
-        .next-number.next-up {
-            border-color: #f59e0b;
-            background: #fffbeb;
-            color: #b45309;
-        }
-
-        /* Connection Status */
-        .connection-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 50px;
+        .loket-status {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
             font-size: 0.9rem;
-            font-weight: 600;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            color: var(--text-gray);
         }
 
-        .connection-status.connected {
-            background: #dcfce7;
-            color: #15803d;
-            border: 1px solid #bbf7d0;
-        }
-
-        .connection-status.disconnected {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
+        .loket-status.calling { color: #15803d; }
+        .loket-status.waiting { color: #b45309; }
 
         /* Fullscreen Button */
         .fullscreen-btn {
             position: fixed;
-            bottom: 20px;
+            bottom: 60px; /* Disesuaikan untuk running text */
             right: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #1d4ed8;
-            width: 50px;
-            height: 50px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--primary-green);
+            width: 50px; height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -438,583 +295,311 @@
             cursor: pointer;
             z-index: 1000;
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--shadow-md);
         }
 
-        .fullscreen-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.1);
-        }
-
-        /* Loading State */
-        .loading-state {
+        .fullscreen-btn:hover { background: var(--bg-light); transform: scale(1.1); }
+        
+        /* Placeholder State */
+        .placeholder-call {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            min-height: 200px;
-        }
-
-        .loading-content {
+            justify-content: center;
             text-align: center;
-            color: #64748b;
+            gap: 20px;
+            height: 100%;
+        }
+        .placeholder-call .material-icons {
+            font-size: 5rem;
+            color: var(--text-gray);
+            opacity: 0.3;
+        }
+        .placeholder-call p {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            color: var(--text-gray);
+            font-weight: 500;
         }
 
-        .loading-content .material-icons {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            opacity: 0.5;
+        /* RUNNING TEXT BILLBOARD */
+        .running-text-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--primary-green);
+            color: var(--text-light);
+            padding: 10px 0;
+            overflow: hidden;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            z-index: 1001;
         }
+        .running-text {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%; /* Mulai dari luar layar kanan */
+            animation: marquee 30s linear infinite;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        @keyframes marquee {
+            0%   { transform: translateX(0%); }
+            100% { transform: translateX(-100%); }
+        }
+
 
         /* Responsive */
         @media (max-width: 1200px) {
             .container {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto;
+                grid-template-rows: auto auto 1fr;
+                height: auto;
             }
-            
-            .current-number-display {
-                font-size: 6rem;
-            }
-            
-            .current-loket-display {
-                font-size: 2rem;
-            }
-            
-            .current-call {
-                min-height: 400px;
-                padding: 30px;
-            }
-            
-            .number-container {
-                padding: 30px 45px;
+            .main-display {
+                min-height: 450px;
             }
         }
-
         @media (max-width: 768px) {
-            body {
-                padding: 15px;
-            }
-            
-            .header {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .header .subtitle {
-                font-size: 1rem;
-            }
-            
-            .current-number-display {
-                font-size: 4.5rem;
-            }
-            
-            .current-loket-display {
-                font-size: 1.6rem;
-            }
-            
-            .main-display, .loket-list {
-                padding: 20px;
-            }
-            
-            .loket-name {
-                font-size: 1.1rem;
-            }
-            
-            .current-number {
-                font-size: 1.8rem;
-            }
-            
-            .current-number.empty {
-                font-size: 1.3rem;
-            }
-            
-            .number-container {
-                padding: 25px 35px;
-            }
-            
-            .current-call {
-                min-height: 380px;
-                padding: 25px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .current-number-display {
-                font-size: 3.5rem;
-            }
-            
-            .current-call-title {
-                font-size: 1.3rem;
-            }
-            
-            .current-loket-display {
-                font-size: 1.4rem;
-            }
-            
-            .number-container {
-                padding: 15px 25px;
-            }
-            
-            .current-call {
-                min-height: 300px;
-                padding: 20px;
-            }
-            
-            .loket-card {
-                padding: 12px;
-            }
+            body { padding: 10px; padding-bottom: 50px; }
+            .container { gap: 10px; height: calc(100vh - 20px - 38px); }
+            .header { flex-direction: column; gap: 10px; padding: 15px; }
+            .header-info h1 { font-size: 1.5rem; }
+            .current-time { font-size: 1rem; }
+            .current-call { padding: 25px; }
+            .current-call-title { font-size: 1.5rem; }
+            .current-number-display { font-size: clamp(5rem, 20vw, 8rem); }
+            .current-loket-display { font-size: 2rem; }
+            .loket-list { padding: 20px; }
+            .loket-card { padding: 15px; }
+            .running-text-container { padding: 8px 0; }
+            .running-text { font-size: 1rem; }
+            .fullscreen-btn { bottom: 50px; }
         }
     </style>
 </head>
 <body>
-    <!-- Connection Status -->
-    <div class="connection-status connected" id="connectionStatus">
-        <span class="material-icons">wifi</span>
-        <span>Terhubung</span>
-    </div>
-
-    <!-- Fullscreen Button -->
     <div class="fullscreen-btn" id="fullscreenBtn" title="Layar Penuh">
         <span class="material-icons">fullscreen</span>
     </div>
 
     <div class="container">
-        <!-- Header -->
         <div class="header">
-            <h1>SISTEM ANTRIAN DIGITAL</h1>
-            <p class="subtitle">Monitor Antrian Real-time - Pelayanan Terpadu</p>
-            <div class="current-time" id="currentTime"></div>
-            <div class="live-indicator" id="liveIndicator">
-                LIVE - <span id="updateStatus">Memperbarui data...</span>
+            <div class="header-info">
+                <h1>SISTEM ANTRIAN DIGITAL</h1>
+                <p class="subtitle">Pelayanan Terpadu Satu Pintu</p>
+            </div>
+            <div class="header-time-wrapper">
+                <div class="current-time" id="currentTime"></div>
             </div>
         </div>
 
-        <!-- Main Display - Left Side -->
-        <div class="main-display">
-            <!-- Current Call Display -->
-            <div class="current-call">
-                <div class="current-call-header">
-                    <div class="current-call-title">
-                        <span class="material-icons">volume_up</span>
-                        SEDANG DIPANGGIL
-                    </div>
-                    <div class="current-call-subtitle">Silakan menuju ke loket yang ditentukan</div>
-                </div>
-                
-                <div class="current-call-content">
-                    <div class="number-container">
-                        <div class="current-number-display" id="currentNumberDisplay">
-                            A001
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="current-call-footer">
-                    <div class="current-loket-display" id="currentLoketDisplay">
-                        <span class="material-icons">desktop_windows</span>
-                        <span id="loketName">Loket A</span>
-                        <div class="sound-wave">
-                            <span></span><span></span><span></span><span></span>
-                        </div>
-                    </div>
-                    <div class="call-instruction">Harap datang dengan membawa dokumen yang diperlukan</div>
-                </div>
+        <div class="main-display" id="mainDisplay">
+            <div class="placeholder-call">
+                <span class="material-icons">notifications_paused</span>
+                <p>Menunggu Panggilan Berikutnya</p>
             </div>
         </div>
 
-        <!-- Loket List - Right Side -->
         <div class="loket-list">
-            <div class="loket-list-header">
-                <span class="material-icons">view_list</span>
-                DAFTAR LOKET PELAYANAN
-            </div>
+            <div class="loket-list-header">DAFTAR LOKET</div>
             <div class="loket-grid" id="loketGrid">
-                <!-- Loket A -->
-                <div class="loket-card active">
-                    <div class="loket-name">Loket A</div>
-                    <div class="loket-status calling">
-                        Sedang Melayani
-                    </div>
-                    <div class="current-number">
-                        A001
-                    </div>
                 </div>
-                
-                <!-- Loket B -->
-                <div class="loket-card">
-                    <div class="loket-name">Loket B</div>
-                    <div class="loket-status idle">
-                        Tidak Ada Antrian
-                    </div>
-                    <div class="current-number empty">
-                        —
-                    </div>
-                </div>
-                
-                <!-- Loket C -->
-                <div class="loket-card">
-                    <div class="loket-name">Loket C</div>
-                    <div class="loket-status idle">
-                        Tidak Ada Antrian
-                    </div>
-                    <div class="current-number empty">
-                        —
-                    </div>
-                </div>
-                
-                <!-- Loket D -->
-                <div class="loket-card">
-                    <div class="loket-name">Loket D</div>
-                    <div class="loket-status idle">
-                        Tidak Ada Antrian
-                    </div>
-                    <div class="current-number empty">
-                        —
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <script>
-        class QueueDisplaySystem {
-            constructor() {
-                this.previousData = null;
-                this.speechEnabled = true;
-                this.connectionStatus = true;
-                this.updateInterval = null;
-                this.lastUpdateTime = null;
-                this.updateTimer = null;
-                this.currentCall = null;
-                
-                this.initializeSystem();
-                this.setupEventListeners();
-                this.startDataFetching();
-                this.updateClock();
-                this.setupFullscreen();
-            }
+    <div class="running-text-container">
+        <p class="running-text">
+            SELAMAT DATANG DI PENGADILAN NEGERI BANYUWANGI - JAGA SELALU PROTOKOL KESEHATAN - DILARANG MEMBERI TIPS ATAU BINGKISAN DALAM BENTUK APAPUN KEPADA PETUGAS KAMI - TERIMA KASIH
+        </p>
+    </div>
 
-            initializeSystem() {
-                // Update clock every second
+    <script>
+        class ModernQueueDisplay {
+            constructor() {
+                this.previousCalls = {};
+                this.speechEnabled = true;
+                this.updateInterval = null;
+                this.lastDisplayedCall = null; // Menyimpan data panggilan terakhir
+                
+                this.mainDisplay = document.getElementById('mainDisplay');
+                
+                this.initialize();
+            }
+            
+            initialize() {
+                this.setupFullscreen();
                 setInterval(() => this.updateClock(), 1000);
                 
-                // Check for speech synthesis support
                 if (!('speechSynthesis' in window)) {
-                    console.warn('Speech synthesis tidak didukung di browser ini');
                     this.speechEnabled = false;
+                    console.warn('Speech synthesis tidak didukung.');
                 }
 
-                // Set up CSRF token for requests
-                const token = document.querySelector('meta[name="csrf-token"]');
-                if (token) {
-                    window.csrfToken = token.getAttribute('content');
-                }
-
-                // Initialize update timer
-                this.updateUpdateTimer();
+                this.fetchData();
+                this.updateInterval = setInterval(() => this.fetchData(), 3000);
             }
 
             setupFullscreen() {
-                const fullscreenBtn = document.getElementById('fullscreenBtn');
-                fullscreenBtn.addEventListener('click', () => {
+                const btn = document.getElementById('fullscreenBtn');
+                btn.addEventListener('click', () => {
                     if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(err => {
-                            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                        });
-                        fullscreenBtn.innerHTML = '<span class="material-icons">fullscreen_exit</span>';
-                        fullscreenBtn.title = 'Keluar Layar Penuh';
+                        document.documentElement.requestFullscreen().catch(err => console.error(err));
                     } else {
-                        if (document.exitFullscreen) {
-                            document.exitFullscreen();
-                            fullscreenBtn.innerHTML = '<span class="material-icons">fullscreen</span>';
-                            fullscreenBtn.title = 'Layar Penuh';
-                        }
+                        document.exitFullscreen();
                     }
                 });
 
-                // Handle fullscreen change events
                 document.addEventListener('fullscreenchange', () => {
-                    if (!document.fullscreenElement) {
-                        fullscreenBtn.innerHTML = '<span class="material-icons">fullscreen</span>';
-                        fullscreenBtn.title = 'Layar Penuh';
-                    }
-                });
-            }
-
-            setupEventListeners() {
-                // Handle visibility changes
-                document.addEventListener('visibilitychange', () => {
-                    if (document.hidden) {
-                        this.pauseUpdates();
-                    } else {
-                        this.resumeUpdates();
-                    }
-                });
-
-                // Handle online/offline status
-                window.addEventListener('online', () => {
-                    this.updateConnectionStatus(true);
-                    this.resumeUpdates();
-                });
-
-                window.addEventListener('offline', () => {
-                    this.updateConnectionStatus(false);
+                    const icon = document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen';
+                    btn.innerHTML = `<span class="material-icons">${icon}</span>`;
                 });
             }
 
             updateClock() {
                 const now = new Date();
-                const timeString = now.toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                const dateString = now.toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                document.getElementById('currentTime').innerHTML = `
-                    <span class="material-icons">schedule</span>
-                    ${dateString}, <strong>${timeString}</strong>
-                `;
+                const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const date = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                document.getElementById('currentTime').innerHTML = `<span class="material-icons">schedule</span> ${date}, ${time}`;
             }
 
-            updateUpdateTimer() {
-                if (this.updateTimer) clearInterval(this.updateTimer);
-                
-                this.updateTimer = setInterval(() => {
-                    const now = new Date();
-                    const diff = now - this.lastUpdateTime;
-                    const seconds = Math.floor(diff / 1000);
-                    
-                    let statusText;
-                    if (seconds < 10) {
-                        statusText = 'Baru saja diperbarui';
-                    } else if (seconds < 60) {
-                        statusText = `Diperbarui ${seconds} detik lalu`;
-                    } else {
-                        const minutes = Math.floor(seconds / 60);
-                        statusText = `Diperbarui ${minutes} menit lalu`;
-                    }
-                    
-                    document.getElementById('updateStatus').textContent = statusText;
-                }, 1000);
-            }
-
-            updateConnectionStatus(isConnected) {
-                this.connectionStatus = isConnected;
-                const statusEl = document.getElementById('connectionStatus');
-                
-                if (isConnected) {
-                    statusEl.className = 'connection-status connected';
-                    statusEl.innerHTML = '<span class="material-icons">wifi</span><span>Terhubung</span>';
-                } else {
-                    statusEl.className = 'connection-status disconnected';
-                    statusEl.innerHTML = '<span class="material-icons">wifi_off</span><span>Terputus</span>';
-                }
-            }
-
-            async fetchQueueData() {
+            async fetchData() {
                 try {
-                    const response = await fetch('/display/queue-data', {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
+                    const response = await fetch('/display/queue-data');
+                    if (!response.ok) throw new Error('Network response was not ok');
                     
+                    const data = await response.json();
                     if (data.status) {
-                        this.lastUpdateTime = new Date();
-                        this.updateUpdateTimer();
-                        this.updateDisplay(data.data);
-                        this.updateConnectionStatus(true);
-                    } else {
-                        throw new Error(data.message || 'Failed to fetch data');
+                        this.renderLoketGrid(data.data.lokets);
+                        this.processCalls(data.data.lokets);
                     }
-
                 } catch (error) {
                     console.error('Error fetching queue data:', error);
-                    this.updateConnectionStatus(false);
                 }
             }
 
-            updateDisplay(data) {
-                this.updateLoketGrid(data.lokets);
-                this.updateCurrentCall(data.lokets);
-                this.checkForNewCalls(data.lokets);
-            }
-
-            updateLoketGrid(lokets) {
+            renderLoketGrid(lokets) {
                 const gridEl = document.getElementById('loketGrid');
-                
-                if (!lokets || lokets.length === 0) {
-                    gridEl.innerHTML = `
-                        <div class="loading-state">
-                            <div class="loading-content">
-                                <span class="material-icons">inbox</span>
-                                <p>Tidak ada data loket</p>
-                            </div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Sort lokets: calling ones first, then others
-                const sortedLokets = [...lokets].sort((a, b) => {
-                    if (a.current_calling && !b.current_calling) return -1;
-                    if (!a.current_calling && b.current_calling) return 1;
-                    return a.id - b.id;
-                });
-
-                gridEl.innerHTML = sortedLokets.map(loket => {
-                    const hasCalling = loket.current_calling;
-                    const nextQueues = loket.next_queues || [];
+                gridEl.innerHTML = lokets.map(loket => {
+                    const isCalling = !!loket.current_calling;
+                    const hasWaiting = loket.next_queues && loket.next_queues.length > 0;
                     
+                    let statusText = 'Tersedia';
+                    let statusClass = 'idle';
+                    
+                    if(isCalling) {
+                        statusText = `Melayani: ${loket.current_calling}`;
+                        statusClass = 'calling';
+                    } else if (hasWaiting) {
+                        statusText = `${loket.next_queues.length} Antrean Menunggu`;
+                        statusClass = 'waiting';
+                    }
+
                     return `
-                        <div class="loket-card ${hasCalling ? 'active' : ''}">
+                        <div class="loket-card ${isCalling ? 'active' : ''}" data-loket-id="${loket.id}">
+                            <div class="current-number ${isCalling ? '' : 'empty'}">
+                                ${isCalling ? loket.current_calling : '—'}
+                            </div>
                             <div class="loket-name">${loket.nama_loket}</div>
-                            <div class="loket-status ${hasCalling ? 'calling' : (nextQueues.length > 0 ? 'waiting' : 'idle')}">
-                                ${hasCalling ? 'Sedang Melayani' : (nextQueues.length > 0 ? 'Ada Antrian' : 'Tidak Ada Antrian')}
-                            </div>
-                            
-                            <div class="current-number ${hasCalling ? '' : 'empty'}">
-                                ${hasCalling || '—'}
-                            </div>
-                            
-                            ${nextQueues.length > 0 ? `
-                                <div>
-                                    <div class="next-title">Antrian Berikutnya:</div>
-                                    <div class="next-numbers">
-                                        ${nextQueues.slice(0, 3).map((queue, index) => 
-                                            `<div class="next-number ${index === 0 ? 'next-up' : ''}">${queue}</div>`
-                                        ).join('')}
-                                        ${nextQueues.length > 3 ? `<div class="next-number">+${nextQueues.length - 3}</div>` : ''}
-                                    </div>
-                                </div>
-                            ` : ''}
+                            <div class="loket-status ${statusClass}">${statusText}</div>
                         </div>
                     `;
                 }).join('');
             }
+            
+            processCalls(lokets) {
+                const currentCalls = {};
+                let isAnyLoketCalling = false;
 
-            updateCurrentCall(lokets) {
-                // Find the first calling queue to display
-                const callingLoket = lokets.find(l => l.current_calling);
-                
-                if (callingLoket) {
-                    document.getElementById('currentNumberDisplay').textContent = callingLoket.current_calling;
-                    document.getElementById('loketName').textContent = callingLoket.nama_loket;
-                    this.currentCall = {
-                        number: callingLoket.current_calling,
-                        loket: callingLoket.nama_loket
-                    };
-                } else {
-                    document.getElementById('currentNumberDisplay').textContent = '-';
-                    document.getElementById('loketName').textContent = '-';
-                    this.currentCall = null;
-                }
-            }
-
-            checkForNewCalls(currentLokets) {
-                if (!this.previousData) {
-                    this.previousData = currentLokets;
-                    return;
-                }
-
-                // Check for new calls
-                currentLokets.forEach(currentLoket => {
-                    const previousLoket = this.previousData.find(l => l.id === currentLoket.id);
-                    
-                    if (currentLoket.current_calling && 
-                        (!previousLoket || previousLoket.current_calling !== currentLoket.current_calling)) {
-                        
-                        this.playAnnouncement({
-                            kode_antrian: currentLoket.current_calling,
-                            loket: currentLoket.nama_loket
-                        });
+                lokets.forEach(loket => {
+                    if(loket.current_calling) {
+                        currentCalls[loket.id] = loket.current_calling;
+                        isAnyLoketCalling = true;
                     }
                 });
-
-                this.previousData = currentLokets;
+                
+                // Cek panggilan baru untuk announcement
+                for (const loketId in currentCalls) {
+                    if (this.previousCalls[loketId] !== currentCalls[loketId]) {
+                        const loket = lokets.find(l => l.id == loketId);
+                        this.lastDisplayedCall = { number: loket.current_calling, loketName: loket.nama_loket };
+                        this.playAnnouncement(loket.current_calling, loket.nama_loket);
+                    }
+                }
+                
+                this.previousCalls = currentCalls;
+                
+                // Update tampilan utama
+                if (isAnyLoketCalling) {
+                    // Jika ada panggilan, tampilkan yang terakhir disimpan
+                    if (this.lastDisplayedCall) {
+                        this.showCall(this.lastDisplayedCall.number, this.lastDisplayedCall.loketName);
+                    }
+                } else {
+                    // Jika tidak ada panggilan sama sekali, tampilkan placeholder
+                    this.lastDisplayedCall = null; // Reset
+                    this.showPlaceholder();
+                }
             }
 
-            playAnnouncement(calling) {
-                if (!this.speechEnabled) return;
-
-                const text = `Silakan antrian ${calling.kode_antrian.split('').join(' ')} menuju ke ${calling.loket}`;
+            showCall(number, loketName) {
+                // Cek apakah panggilan yang sama sudah ditampilkan
+                const currentDisplayedNumber = this.mainDisplay.querySelector('.current-number-display');
+                if (currentDisplayedNumber && currentDisplayedNumber.textContent === number) {
+                    return; // Sudah ditampilkan, tidak perlu render ulang
+                }
                 
-                // Stop any ongoing speech
-                if (window.speechSynthesis.speaking) {
-                    window.speechSynthesis.cancel();
+                this.mainDisplay.innerHTML = `
+                    <div class="current-call">
+                        <div class="current-call-title">SEDANG DIPANGGIL</div>
+                        <div class="current-call-content">
+                            <div class="current-number-display">${number}</div>
+                        </div>
+                        <div class="current-call-footer">
+                            <div class="current-loket-display">
+                                <span class="material-icons">desktop_windows</span>
+                                <span>${loketName}</span>
+                                <div class="sound-wave">
+                                    <span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            showPlaceholder() {
+                // Cek apakah placeholder sudah ditampilkan
+                if (this.mainDisplay.querySelector('.placeholder-call')) {
+                    return; // Sudah ditampilkan, tidak perlu render ulang
                 }
 
-                const utterance = new SpeechSynthesisUtterance(text);
+                this.mainDisplay.innerHTML = `
+                    <div class="placeholder-call">
+                        <span class="material-icons">notifications_paused</span>
+                        <p>Menunggu Panggilan Berikutnya</p>
+                    </div>
+                `;
+            }
+
+            playAnnouncement(number, loketName) {
+                if (!this.speechEnabled) return;
+                
+                const textToSpeak = `Nomor Antrian, ${number.split('').join(' ')}, silakan menuju ke, ${loketName}`;
+                
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
                 utterance.lang = 'id-ID';
                 utterance.rate = 0.9;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-
-                utterance.onstart = () => {
-                    console.log('Announcement started:', text);
-                };
-
-                utterance.onend = () => {
-                    console.log('Announcement completed');
-                };
-
-                utterance.onerror = (event) => {
-                    console.error('Speech error:', event);
-                };
-
-                // Small delay before speaking
-                setTimeout(() => {
-                    window.speechSynthesis.speak(utterance);
-                }, 500);
-            }
-
-            startDataFetching() {
-                // Initial fetch
-                this.fetchQueueData();
                 
-                // Set up periodic updates every 3 seconds
-                this.updateInterval = setInterval(() => {
-                    if (this.connectionStatus && !document.hidden) {
-                        this.fetchQueueData();
-                    }
-                }, 3000);
-            }
-
-            pauseUpdates() {
-                if (this.updateInterval) {
-                    clearInterval(this.updateInterval);
-                    this.updateInterval = null;
-                }
-            }
-
-            resumeUpdates() {
-                if (!this.updateInterval) {
-                    this.startDataFetching();
-                }
+                utterance.onerror = (e) => console.error('Speech synthesis error:', e);
+                window.speechSynthesis.speak(utterance);
             }
         }
 
-        // Initialize the display when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new QueueDisplaySystem();
+            new ModernQueueDisplay();
         });
     </script>
 </body>

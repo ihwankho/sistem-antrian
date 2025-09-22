@@ -6,11 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ isset($title) ? $title . ' - ' : '' }}Antrian Digital PTSP</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Toastr CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
     
     <style>
@@ -384,14 +381,13 @@
             font-size: 18px;
         }
         .icon-logo {
-    width: 70px;
-    height: 70px;
-    object-fit: contain;
-}
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
 
     </style>
     
-    <!-- Custom Styles dari halaman -->
     @stack('styles')
 </head>
 <body>
@@ -413,8 +409,7 @@
                 <div class="nav-section">
                     <span class="nav-section-title">MENU UTAMA</span>
                     <ul class="nav-list">
-                        <!-- Menu Beranda hanya untuk admin -->
-                        @if(Auth::user()->role === 1)
+                        @if(in_array(Auth::user()->role, [1, 2]))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('dashboard') ?? '/dashboard' }}">
                                 <div class="nav-icon"><i class="material-icons">dashboard</i></div>
@@ -423,7 +418,6 @@
                         </li>
                         @endif
                         
-                        <!-- Menu Panggilan untuk admin dan petugas -->
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('panggilan.admin') ?? '/panggilan/admin' }}">
                                 <div class="nav-icon"><i class="material-icons">call</i></div>
@@ -431,7 +425,6 @@
                             </a>
                         </li>
                         
-                        <!-- Menu Master Data hanya untuk admin -->
                         @if(Auth::user()->role === 1)
                         <li class="nav-item has-submenu">
                             <a class="nav-link" href="#">
@@ -448,41 +441,20 @@
                     </ul>
                 </div>
                 
-                <!-- Menu Laporan untuk admin dan petugas -->
+                @if(in_array(Auth::user()->role, [1, 2]))
                 <div class="nav-section">
                     <span class="nav-section-title">LAPORAN</span>
                     <ul class="nav-list">
-                        <li class="nav-item has-submenu">
-                            <a class="nav-link" href="#">
-                                <div class="nav-icon"><i class="material-icons">queue</i></div>
-                                <span>Manajemen Antrian</span>
-                            </a>
-                            <ul class="submenu">
-                                <li class="nav-item"><a class="nav-link" href="/antrian/daftar"><span>Daftar Antrian</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/antrian/aktif"><span>Antrian Aktif</span></a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item has-submenu">
-                            <a class="nav-link" href="#">
-                                <div class="nav-icon"><i class="material-icons">bar_chart</i></div>
-                                <span>Statistik</span>
-                            </a>
-                             <ul class="submenu">
-                                <li class="nav-item"><a class="nav-link" href="/statistik/harian"><span>Harian</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/statistik/mingguan"><span>Mingguan</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/statistik/bulanan"><span>Bulanan</span></a></li>
-                            </ul>
-                        </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/laporan/terlewat">
-                                <div class="nav-icon"><i class="material-icons">schedule</i></div>
-                                <span>Terlewat / Lembur</span>
+                            <a class="nav-link" href="/reports/activity">
+                                <div class="nav-icon"><i class="material-icons">summarize</i></div>
+                                <span>Laporan Aktivitas</span>
                             </a>
                         </li>
                     </ul>
                 </div>
+                @endif
                 
-                <!-- Menu Pengaturan hanya untuk admin -->
                 @if(Auth::user()->role === 1)
                 <div class="nav-section">
                     <span class="nav-section-title">PENGATURAN</span>
@@ -529,7 +501,6 @@
                     </div>
                 </div>
 
-                <!-- Dropdown Menu -->
                 <div class="user-dropdown-menu" id="userDropdownMenu">
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
@@ -553,13 +524,10 @@
         </div>
     </main>
 
-    <!-- jQuery - WAJIB DI-LOAD PERTAMA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     <script>
@@ -852,7 +820,6 @@
     console.log('🔧 Helper functions tersedia: showNotification, setButtonLoading, handleAjaxError, formatCurrency, formatDate');
     </script>
 
-    <!-- Custom Scripts dari halaman -->
     @stack('scripts')
     <script>
         // ===============================

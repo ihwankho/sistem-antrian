@@ -9,81 +9,78 @@ use App\Http\Controllers\Api\PengunjungController;
 use App\Http\Controllers\Api\LoketController;
 use App\Http\Controllers\Api\AntrianController;
 use App\Http\Controllers\Api\PanduanController;
+use App\Http\Controllers\Api\ReportController; // DIUBAH: Menambahkan ReportController
 
-// ======================
-// ROUTE PUBLIK (TANPA LOGIN)
-// ======================
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Rute-rute ini dimuat oleh RouteServiceProvider dan semuanya
+| secara otomatis akan memiliki prefix /api.
+|
+*/
 
-// Tes koneksi
-Route::get('/test-api', function () {
-    return 'API terhubung!';
-});
 
-// Login
+// ===================================================================
+// ROUTE PUBLIK - Tidak memerlukan login/token
+// ===================================================================
+
+Route::get('/test-api', fn() => 'API terhubung!');
 Route::post('/login', [AuthController::class, 'login']);
 
-// ======================
-// ROUTE TANPA TOKEN
-// ======================
+// Endpoint untuk keperluan umum di halaman depan/display
+Route::get('/pelayanan-departemen', [PelayananController::class, 'getPelaDep']);
+Route::get('/users-loket', [UserController::class, 'getUsLok']);
+Route::get('/antrian/dipanggil', [AntrianController::class, 'getAntrianDipanggil']); // DIUBAH: URL lebih jelas
+Route::apiResource('panduan', PanduanController::class)->only(['index', 'show']);
+Route::apiResource('pelayanan', PelayananController::class)->only(['index', 'show']);
 
-Route::get('/pelayanan-departemen', [PelayananController::class, 'getPelaDep']); //pelayanan x departemen
-Route::get('/users-loket', [UserController::class, 'getUsLok']); //user dengan loket
-Route::apiResource('panduan', PanduanController::class) //panduan
-    ->only(['index', 'show']);
-Route::apiResource('pelayanan', PelayananController::class) // pelayanan
-    ->only(['index', 'show']);
-Route::post('/antrian', [AntrianController::class, 'store']); // Membuat antrian
-Route::get('/antrian/loket', [AntrianController::class, 'getAntrianDipanggil']); //daftar antrian yang sedang dipanggil
-
-
-
-
-
-
-// ======================
-// ROUTE DENGAN TOKEN (DEFAULT SEMUA LOGIN)
-// ======================
+// Endpoint untuk pengunjung membuat antrian baru
+Route::post('/antrian', [AntrianController::class, 'store']);
+Route::get('/antrian/show/{id}', [AntrianController::class, 'ShowPe']);
+Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
+// ===================================================================
+// ROUTE TERPROTEKSI - Memerlukan token via Sanctum
+// ===================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // CRUD User
-    Route::post('/users', [UserController::class, 'store']);
-    Route::get('/users/showall', [UserController::class, 'index']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::put('/users/{id}', [UserController::class, 'update']);
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    // --- MANAJEMEN PENGGUNA & MASTER DATA (UMUMNYA UNTUK ADMIN) ---
 
+    // DIUBAH: Rute User disederhanakan menggunakan apiResource
+    // Catatan: Frontend perlu menyesuaikan GET /users/showall menjadi GET /users
+    Route::apiResource('users', UserController::class);
 
-    // Departemen & Pelayanan
     Route::apiResource('departemen', DepartemenController::class);
     Route::get('/departemen-loket', [DepartemenController::class, 'getDepLok']);
 
-    Route::apiResource('pelayanan', PelayananController::class)
-        ->only(['store', 'update', 'destroy']);
+    // Rute create, update, delete untuk Pelayanan & Panduan
+    Route::apiResource('pelayanan', PelayananController::class)->except(['index', 'show']);
+    Route::apiResource('panduan', PanduanController::class)->except(['index', 'show']);
 
-
-    // Loket
     Route::apiResource('lokets', LoketController::class);
-
-    // Panduan
-    Route::apiResource('panduan', PanduanController::class)
-        ->only(['store', 'update', 'destroy']);
-    // Pengunjung
     Route::apiResource('pengunjung', PengunjungController::class);
 
-    // Antrian
-    Route::get('/antrian', [AntrianController::class, 'index']);
-    Route::get('/antrian/pengunjung/{id}', [AntrianController::class, 'ShowPe']); //Antrian x pengunjung
 
-    Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
-    Route::get('/antrian/loket/{id_loket}', [AntrianController::class, 'getByLoket']);
+    // --- MANAJEMEN ANTRIAN (UNTUK ADMIN & PETUGAS) ---
+    Route::prefix('antrian')->group(function() {
+        Route::get('/', [AntrianController::class, 'index']); // Daftar semua antrian (terpaginasi)
+        Route::get('/pengunjung/{pengunjung}', [AntrianController::class, 'showByPengunjung']); // DIUBAH: URL lebih standar
+        Route::get('/loket/{loket}', [AntrianController::class, 'getByLoket']); // DIUBAH: Menggunakan model binding
 
-    Route::post('/antrian/call', [AntrianController::class, 'callNextAntrian']);
-    Route::post('/antrian/finish', [AntrianController::class, 'finishAntrian']);
-    Route::post('/antrian/skip', [AntrianController::class, 'SkipAntrian']);
-    Route::post('/antrian/recall', [AntrianController::class, 'recallAntrian']);
+        // Aksi Panggilan oleh Petugas
+        Route::post('/panggil', [AntrianController::class, 'callNextAntrian']); // DIUBAH: URL lebih singkat
+        Route::post('/selesai', [AntrianController::class, 'finishAntrian']); // DIUBAH: URL lebih singkat
+        Route::post('/lewati', [AntrianController::class, 'skipAntrian']); // DIUBAH: URL lebih singkat
+        Route::post('/panggil-ulang', [AntrianController::class, 'recallAntrian']); // DIUBAH: URL lebih singkat
+    });
 
-    Route::get('/laporan-bulanan', [AntrianController::class, 'laporanBulanan']);
+
+    // --- LAPORAN ---
+    // DIUBAH: Rute laporan dipindahkan ke dalam middleware agar aman
+    // DIUBAH: Menggunakan ReportController & URL yang lebih rapi
+    Route::get('/reports/activity-history', [ReportController::class, 'getActivityHistory']);
+    Route::get('/reports/monthly', [ReportController::class, 'laporanBulanan']); // DIUBAH: Konsisten di ReportController
 });

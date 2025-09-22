@@ -6,14 +6,12 @@
         <div class="col-md-12">
             <h1 class="mb-4">Panggilan Antrian - {{ $loket->nama_loket }}</h1>
             
-            <!-- Alert Info Loket -->
-            <div class="alert alert-info mb-4">
+            <div class="alert alert-info mb-4 d-flex align-items-center">
                 <i class="material-icons align-middle me-2">info</i>
-                Anda mengelola antrian untuk <strong>{{ $loket->nama_loket }}</strong>
+                <span>Anda mengelola antrian untuk <strong>{{ $loket->nama_loket }}</strong></span>
             </div>
             
             <div class="row">
-                <!-- Panel Kiri: Panggil Antrian -->
                 <div class="col-md-5">
                     <div class="card shadow-sm border-0 mb-4">
                         <div class="card-header bg-primary text-white">
@@ -21,7 +19,6 @@
                         </div>
                         <div class="card-body">
 
-                            <!-- Nomor Antrian yang Sedang Dipanggil -->
                             <div class="mb-4 p-3 bg-light rounded text-center" id="currentAntrianDisplay">
                                 @if($currentCalling)
                                     <h2 class="display-4 fw-bold">{{ $currentCalling->kode_antrian }}</h2>
@@ -31,17 +28,16 @@
                                 @endif
                             </div>
 
-                            <!-- Tombol Aksi -->
                             <div class="row mb-3">
-                                <!-- Tombol Panggil Berikutnya -->
                                 <div class="col-6">
-                                    <button class="btn btn-success btn-lg w-100 btn-next">
+                                    {{-- DIUBAH: Menghapus class 'btn-lg' agar ukurannya normal --}}
+                                    <button class="btn btn-success w-100 btn-next">
                                         <i class="material-icons align-middle">skip_next</i> Next
                                     </button>
                                 </div>
-                                <!-- Tombol Recall -->
                                 <div class="col-6">
-                                    <button class="btn btn-info btn-lg w-100 btn-recall-main" {{ !$currentCalling ? 'disabled' : '' }}>
+                                    {{-- DIUBAH: Menghapus class 'btn-lg' agar ukurannya normal --}}
+                                    <button class="btn btn-info w-100 btn-recall-main" {{ !$currentCalling ? 'disabled' : '' }}>
                                         <i class="material-icons align-middle">replay</i> Recall
                                     </button>
                                 </div>
@@ -49,13 +45,11 @@
 
                             @if($currentCalling)
                             <div class="row mb-3">
-                                <!-- Tombol Selesai -->
                                 <div class="col-6">
                                     <button class="btn btn-primary w-100 btn-finish" data-antrian-id="{{ $currentCalling->id }}">
                                         <i class="material-icons align-middle">check</i> Selesai
                                     </button>
                                 </div>
-                                <!-- Tombol Skip -->
                                 <div class="col-6">
                                     <button class="btn btn-warning w-100 btn-skip" data-antrian-id="{{ $currentCalling->id }}">
                                         <i class="material-icons align-middle">skip_next</i> Skip
@@ -64,7 +58,6 @@
                             </div>
                             @endif
 
-                            <!-- Jumlah Antrian Tersisa -->
                             <div class="alert alert-secondary mb-0">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span>Antrian Tersisa:</span>
@@ -75,14 +68,12 @@
                     </div>
                 </div>
 
-                <!-- Panel Kanan: Daftar Antrian Aktif -->
                 <div class="col-md-7">
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-primary text-white">
                             <h5 class="m-0">Daftar Antrian Aktif</h5>
                         </div>
                         <div class="card-body">
-                            <!-- Fitur Pencarian dan Paginasi -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <form method="GET" action="" class="d-flex">
                                     <input type="text" name="search" class="form-control me-2" placeholder="Cari..." value="{{ request('search') }}">
@@ -100,7 +91,6 @@
                                 </div>
                             </div>
 
-                            <!-- Tabel Antrian -->
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead class="table-light">
@@ -109,7 +99,6 @@
                                             <th>Nomor Antrian</th>
                                             <th>Nama Pengunjung</th>
                                             <th>Status</th>
-                                            <th>Loket</th>
                                             <th>Waktu</th>
                                             <th>Aksi</th>
                                         </tr>
@@ -129,7 +118,6 @@
                                                 <span class="badge bg-secondary">Dilewati</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $loket->nama_loket }}</td>
                                             <td>{{ $antrian->created_at->format('H:i') }}</td>
                                             <td>
                                                 @if($antrian->status_antrian == 2)
@@ -149,16 +137,16 @@
                                         </tr>
                                         @empty
                                         <tr>
-                                            <td colspan="7" class="text-center">Tidak ada antrian aktif</td>
+                                            <td colspan="6" class="text-center">Tidak ada antrian aktif</td>
                                         </tr>
                                         @endforelse
                                     </tbody>
                                 </table>
                             </div>
 
-                            <!-- Pagination -->
                             <div class="d-flex justify-content-center">
-                                {{ $antrians->links() }}
+                                {{-- DIUBAH: Menambahkan view 'pagination::bootstrap-5' untuk style yang benar --}}
+                                {{ $antrians->links('pagination::bootstrap-5') }}
                             </div>
                         </div>
                     </div>
@@ -170,229 +158,80 @@
 @endsection
 
 @push('scripts')
+{{-- DIUBAH: Kode JavaScript disederhanakan untuk mengurangi duplikasi --}}
 <script>
 $(document).ready(function() {
-    // Fungsi untuk mengucapkan teks menggunakan Web Speech API
+    // Fungsi untuk mengucapkan teks
     function speakText(text) {
         if ('speechSynthesis' in window) {
-            // Hentikan ucapan yang sedang berlangsung (jika ada)
             window.speechSynthesis.cancel();
-            
-            // Buat objek SpeechSynthesisUtterance
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'id-ID'; // Atur bahasa Indonesia
-            
-            // Atur kecepatan dan pitch (opsional)
-            utterance.rate = 1.0; // Kecepatan, 1.0 normal
-            utterance.pitch = 1.0; // Pitch, 1.0 normal
-            
-            // Tambahkan event handler untuk error
-            utterance.onerror = function(event) {
-                console.error('SpeechSynthesis Error:', event);
-            };
-            
-            // Mulai berbicara
+            utterance.lang = 'id-ID';
+            utterance.onerror = (e) => console.error('SpeechSynthesis Error:', e);
             window.speechSynthesis.speak(utterance);
-        } else {
-            console.error('Web Speech API tidak didukung di browser ini.');
         }
     }
 
-    // Handle tombol next
+    // Fungsi AJAX generik untuk menangani semua aksi tombol
+    function handleAction(button, url, data, successMessage, callback) {
+        button.prop('disabled', true).html('<i class="material-icons align-middle">hourglass_top</i>');
+
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: { ...data, _token: "{{ csrf_token() }}" },
+            success: function(response) {
+                if (response.status) {
+                    toastr.success(successMessage + (response.data.kode_antrian ? ': ' + response.data.kode_antrian : ''));
+                    if (response.data && response.data.voice_text) {
+                        setTimeout(() => speakText(response.data.voice_text), 500);
+                    }
+                    if (callback) {
+                        callback(response);
+                    } else {
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                } else {
+                    toastr.error('Gagal: ' + (response.message || 'Terjadi kesalahan'));
+                    button.prop('disabled', false).html(button.data('original-html'));
+                }
+            },
+            error: function(xhr) {
+                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan pada server';
+                toastr.error(msg);
+                button.prop('disabled', false).html(button.data('original-html'));
+            }
+        });
+    }
+
+    // Simpan HTML asli dari setiap tombol untuk di-restore jika gagal
+    $('.btn-next, .btn-recall-main, .btn-recall-table, .btn-finish, .btn-skip').each(function() {
+        $(this).data('original-html', $(this).html());
+    });
+    
+    // Event listeners untuk setiap tombol aksi
     $('.btn-next').click(function() {
-        const button = $(this);
-        
-        button.prop('disabled', true).html('<i class="material-icons align-middle">hourglass_top</i> Memproses...');
-        
-        $.ajax({
-            url: "{{ route('panggilan.petugas.next') }}",
-            method: 'POST',
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function(response) {
-                if (response.status) {
-                    // Update tampilan antrian yang sedang dipanggil
-                    $('#currentAntrianDisplay').html(
-                        '<h2 class="display-4 fw-bold">' + response.data.kode_antrian + '</h2>' +
-                        '<p class="mb-0">Sedang Dipanggil</p>'
-                    );
-                    
-                    // Enable tombol recall
-                    $('.btn-recall-main').prop('disabled', false);
-                    
-                    toastr.success('Antrian berhasil dipanggil: ' + response.data.kode_antrian);
-                    
-                    // Ucapkan teks dari response
-                    if (response.data.voice_text) {
-                        // Beri sedikit jeda sebelum berbicara
-                        setTimeout(function() {
-                            speakText(response.data.voice_text);
-                        }, 500);
-                    }
-                    
-                    // Reload setelah 2 detik untuk update tabel
-                    setTimeout(() => location.reload(), 2000);
-                } else {
-                    toastr.error('Gagal: ' + response.message);
-                }
-                button.prop('disabled', false).html('<i class="material-icons align-middle">skip_next</i> Next');
-            },
-            error: function(xhr) {
-                let errorMessage = 'Terjadi kesalahan pada server';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                toastr.error(errorMessage);
-                button.prop('disabled', false).html('<i class="material-icons align-middle">skip_next</i> Next');
-            }
+        handleAction($(this), "{{ route('panggilan.petugas.next') }}", {}, 'Antrian berhasil dipanggil', () => {
+             setTimeout(() => location.reload(), 2000);
         });
     });
 
-    // Handle tombol recall utama
-    $('.btn-recall-main').click(function() {
-        const button = $(this);
-        
-        button.prop('disabled', true).html('<i class="material-icons align-middle">hourglass_top</i> Memproses...');
-        
-        $.ajax({
-            url: "{{ route('panggilan.petugas.recall') }}",
-            method: 'POST',
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function(response) {
-                if (response.status) {
-                    // Ucapkan teks dari response
-                    if (response.data.voice_text) {
-                        // Beri sedikit jeda sebelum berbicara
-                        setTimeout(function() {
-                            speakText(response.data.voice_text);
-                        }, 500);
-                    }
-                    
-                    toastr.success('Recall berhasil: ' + response.data.kode_antrian);
-                } else {
-                    toastr.error('Gagal: ' + response.message);
-                }
-                button.prop('disabled', false).html('<i class="material-icons align-middle">replay</i> Recall');
-            },
-            error: function(xhr) {
-                let errorMessage = 'Terjadi kesalahan pada server';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                toastr.error(errorMessage);
-                button.prop('disabled', false).html('<i class="material-icons align-middle">replay</i> Recall');
-            }
+    $('.btn-recall-main, .btn-recall-table').click(function() {
+        handleAction($(this), "{{ route('panggilan.petugas.recall') }}", {}, 'Recall berhasil', (response) => {
+            // Setelah selesai, kembalikan tombol ke state semula tanpa reload halaman
+            $(this).prop('disabled', false).html($(this).data('original-html'));
         });
     });
 
-    // Handle tombol recall di tabel
-    $('.btn-recall-table').click(function() {
-        const button = $(this);
-        
-        button.prop('disabled', true).html('<i class="material-icons">hourglass_top</i>');
-        
-        $.ajax({
-            url: "{{ route('panggilan.petugas.recall') }}",
-            method: 'POST',
-            data: {
-                _token: "{{ csrf_token() }}"
-            },
-            success: function(response) {
-                if (response.status) {
-                    // Ucapkan teks dari response
-                    if (response.data.voice_text) {
-                        // Beri sedikit jeda sebelum berbicara
-                        setTimeout(function() {
-                            speakText(response.data.voice_text);
-                        }, 500);
-                    }
-                    
-                    toastr.success('Recall berhasil: ' + response.data.kode_antrian);
-                } else {
-                    toastr.error('Gagal: ' + response.message);
-                }
-                button.prop('disabled', false).html('<i class="material-icons">replay</i>');
-            },
-            error: function(xhr) {
-                let errorMessage = 'Terjadi kesalahan pada server';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                toastr.error(errorMessage);
-                button.prop('disabled', false).html('<i class="material-icons">replay</i>');
-            }
-        });
+    // Menggunakan event delegation untuk tombol finish & skip yang bisa muncul/hilang
+    $(document).on('click', '.btn-finish', function() {
+        const antrianId = $(this).data('antrian-id');
+        handleAction($(this), "{{ route('panggilan.petugas.finish') }}", { id_antrian: antrianId }, 'Antrian berhasil diselesaikan');
     });
 
-    // Handle tombol finish
-    $('.btn-finish').click(function() {
-        const button = $(this);
-        const antrianId = button.data('antrian-id');
-        
-        button.prop('disabled', true).html('<i class="material-icons">hourglass_top</i>');
-        
-        $.ajax({
-            url: "{{ route('panggilan.petugas.finish') }}",
-            method: 'POST',
-            data: {
-                id_antrian: antrianId,
-                _token: "{{ csrf_token() }}"
-            },
-            success: function(response) {
-                if (response.status) {
-                    toastr.success('Antrian berhasil diselesaikan');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    toastr.error('Gagal: ' + response.message);
-                    button.prop('disabled', false).html('<i class="material-icons">check</i>');
-                }
-            },
-            error: function(xhr) {
-                let errorMessage = 'Terjadi kesalahan pada server';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                toastr.error(errorMessage);
-                button.prop('disabled', false).html('<i class="material-icons">check</i>');
-            }
-        });
-    });
-
-    // Handle tombol skip
-    $('.btn-skip').click(function() {
-        const button = $(this);
-        const antrianId = button.data('antrian-id');
-        
-        button.prop('disabled', true).html('<i class="material-icons">hourglass_top</i>');
-        
-        $.ajax({
-            url: "{{ route('panggilan.petugas.skip') }}",
-            method: 'POST',
-            data: {
-                id_antrian: antrianId,
-                _token: "{{ csrf_token() }}"
-            },
-            success: function(response) {
-                if (response.status) {
-                    toastr.success('Antrian berhasil dilewati');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    toastr.error('Gagal: ' + response.message);
-                    button.prop('disabled', false).html('<i class="material-icons">skip_next</i>');
-                }
-            },
-            error: function(xhr) {
-                let errorMessage = 'Terjadi kesalahan pada server';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                toastr.error(errorMessage);
-                button.prop('disabled', false).html('<i class="material-icons">skip_next</i>');
-            }
-        });
+    $(document).on('click', '.btn-skip', function() {
+        const antrianId = $(this).data('antrian-id');
+        handleAction($(this), "{{ route('panggilan.petugas.skip') }}", { id_antrian: antrianId }, 'Antrian berhasil dilewati');
     });
 });
 </script>
