@@ -7,14 +7,6 @@
     .btn-action { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; color: white !important; }
 </style>
 
-@php
-    // Siapkan data loket agar mudah dicari berdasarkan ID
-    $loketsById = [];
-    foreach ($lokets as $loket) {
-        $loketsById[$loket['id']] = $loket['nama_loket'];
-    }
-@endphp
-
 <main class="container-fluid">
     <div class="card main-card p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -38,8 +30,18 @@
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $departemen['nama_departemen'] }}</td>
                         <td>
-                            {{-- Cocokkan id_loket dengan nama loket dari array $loketsById --}}
-                            @if(!empty($departemen['id_loket']))
+                            {{-- Cek jika data sudah mengandung nama_loket --}}
+                            @if(isset($departemen['nama_loket']))
+                                {{ $departemen['nama_loket'] }}
+                            {{-- Jika tidak, gunakan mapping manual --}}
+                            @elseif(!empty($departemen['id_loket']))
+                                @php
+                                    // Siapkan data loket agar mudah dicari berdasarkan ID
+                                    $loketsById = [];
+                                    foreach ($lokets as $loket) {
+                                        $loketsById[$loket['id']] = $loket['nama_loket'];
+                                    }
+                                @endphp
                                 {{ $loketsById[$departemen['id_loket']] ?? 'N/A' }}
                             @else
                                 -

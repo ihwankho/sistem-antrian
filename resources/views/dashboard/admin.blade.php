@@ -30,10 +30,8 @@
     }
 
     /* ===== MAIN LAYOUT ===== */
-    /* *** CSS YANG DIPERBARUI *** */
     .main-content {
-        /* Baris 'margin: 0 !important;' telah DIHAPUS dari sini */
-        padding: var(--spacing-lg); /* Padding disesuaikan agar rapi */
+        padding: var(--spacing-lg);
         min-height: calc(100vh - 120px);
         background-color: #f5f7fa;
     }
@@ -129,7 +127,7 @@
     .stat-card.queue .stat-icon { background-color: rgba(67, 97, 238, 0.1); color: var(--primary-color); }
     .stat-card.missed .stat-icon { background-color: rgba(247, 37, 133, 0.1); color: var(--warning-color); }
     .stat-card.served .stat-icon { background-color: rgba(76, 201, 240, 0.1); color: var(--success-color); }
-    .stat-card.overtime .stat-icon { background-color: rgba(230, 57, 70, 0.1); color: var(--danger-color); }
+    .stat-card.active .stat-icon { background-color: rgba(230, 57, 70, 0.1); color: var(--danger-color); }
 
     .stat-value {
         font-size: clamp(2rem, 5vw, 2.8rem);
@@ -214,6 +212,13 @@
         display: flex;
         gap: var(--spacing);
         align-items: flex-start;
+        text-decoration: none;
+        color: inherit;
+        transition: background-color 0.2s ease;
+    }
+
+    .notification-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
     }
 
     .notification-icon {
@@ -283,28 +288,28 @@
                 <h5 class="stat-title">Antrian Hari Ini</h5>
                 <div class="stat-icon"><i class="material-icons">queue</i></div>
             </div>
-            <h2 class="stat-value" id="queue-today">24</h2>
+            <h2 class="stat-value" id="queue-today">{{ $stats['today_queue'] }}</h2>
         </div>
         <div class="stat-card missed">
             <div class="stat-header">
                 <h5 class="stat-title">Terlewat</h5>
                 <div class="stat-icon"><i class="material-icons">schedule</i></div>
             </div>
-            <h2 class="stat-value" id="missed-count">3</h2>
+            <h2 class="stat-value" id="missed-count">{{ $stats['missed'] }}</h2>
         </div>
         <div class="stat-card served">
             <div class="stat-header">
                 <h5 class="stat-title">Terlayani</h5>
                 <div class="stat-icon"><i class="material-icons">check_circle</i></div>
             </div>
-            <h2 class="stat-value" id="served-count">18</h2>
+            <h2 class="stat-value" id="served-count">{{ $stats['served'] }}</h2>
         </div>
-        <div class="stat-card overtime">
+        <div class="stat-card active">
             <div class="stat-header">
-                <h5 class="stat-title">Lewat Waktu</h5>
-                <div class="stat-icon"><i class="material-icons">timer_off</i></div>
+                <h5 class="stat-title">Antrian Aktif</h5>
+                <div class="stat-icon"><i class="material-icons">hourglass_empty</i></div>
             </div>
-            <h2 class="stat-value" id="overtime-count">2</h2>
+            <h2 class="stat-value" id="active-count">{{ $stats['active'] }}</h2>
         </div>
     </div>
 
@@ -321,41 +326,27 @@
         <div class="notification-card">
             <div class="notification-header">
                 <h5 class="notification-title">Notifikasi</h5>
-                <span class="notification-badge">3 Baru</span>
+                <span class="notification-badge">{{ count($notifications) }} Baru</span>
             </div>
             <div class="notification-list">
-                <a href="#" class="notification-item new">
-                    <div class="notification-icon"><i class="material-icons">info</i></div>
+                @forelse($notifications as $notification)
+                <div class="notification-item {{ $notification['type'] }}">
+                    <div class="notification-icon"><i class="material-icons">{{ $notification['icon'] }}</i></div>
                     <div class="notification-text">
-                        <h6>Antrian Baru</h6>
-                        <p>Nomor antrian A012 telah terdaftar</p>
-                        <div class="notification-time">5 menit lalu</div>
+                        <h6>{{ $notification['title'] }}</h6>
+                        <p>{{ $notification['message'] }}</p>
+                        <div class="notification-time">{{ $notification['time'] }}</div>
                     </div>
-                </a>
-                <a href="#" class="notification-item warning">
-                    <div class="notification-icon"><i class="material-icons">warning</i></div>
+                </div>
+                @empty
+                <div class="notification-item">
+                    <div class="notification-icon"><i class="material-icons">notifications_none</i></div>
                     <div class="notification-text">
-                        <h6>Peringatan Waktu</h6>
-                        <p>Antrian B005 hampir lewat waktu</p>
-                        <div class="notification-time">15 menit lalu</div>
+                        <h6>Tidak ada notifikasi</h6>
+                        <p>Tidak ada aktivitas terbaru</p>
                     </div>
-                </a>
-                <a href="#" class="notification-item success">
-                    <div class="notification-icon"><i class="material-icons">check_circle</i></div>
-                    <div class="notification-text">
-                        <h6>Layanan Selesai</h6>
-                        <p>Antrian C008 telah selesai dilayani</p>
-                        <div class="notification-time">30 menit lalu</div>
-                    </div>
-                </a>
-                <a href="#" class="notification-item new">
-                    <div class="notification-icon"><i class="material-icons">person_add</i></div>
-                    <div class="notification-text">
-                        <h6>Pendaftaran Baru</h6>
-                        <p>2 antrian baru dalam 10 menit terakhir</p>
-                        <div class="notification-time">45 menit lalu</div>
-                    </div>
-                </a>
+                </div>
+                @endforelse
             </div>
         </div>
     </div>
@@ -382,17 +373,17 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(ctx.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'],
+                labels: {!! json_encode($chartData['labels']) !!},
                 datasets: [
                     {
                         label: 'Hari Ini',
-                        data: [8, 12, 15, 10, 14, 9],
+                        data: {!! json_encode($chartData['today']) !!},
                         backgroundColor: 'rgba(67, 97, 238, 0.8)',
                         borderRadius: 6,
                     },
                     {
                         label: 'Kemarin',
-                        data: [6, 10, 12, 8, 11, 7],
+                        data: {!! json_encode($chartData['yesterday']) !!},
                         backgroundColor: 'rgba(76, 201, 240, 0.8)',
                         borderRadius: 6,
                     }
@@ -402,7 +393,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
                     x: { grid: { display: false } }
                 },
                 plugins: {

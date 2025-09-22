@@ -1,0 +1,60 @@
+/* ========================================
+   CSS VARIABLES & BASE STYLES
+======================================== */
+
+:root {
+    /* Colors */
+    --primary-green: #0A4531;
+    --accent-gold: #DA9928;
+    --accent-gold-light: #E8B55F;
+    --bg-light: #FFFFFF;
+    --bg-gray-light: #F8F9FA;
+    --text-dark: #212529;
+    --text-light-on-dark: #FFFFFF;
+    --text-gray: #6C757D;
+    --border-light: #E9ECEF;
+    --border-lighter: #F1F3F4;
+    
+    /* Typography */
+    --font-heading: 'EB Garamond', serif;
+    --font-body: 'Montserrat', sans-serif;
+    
+    /* Layout */
+    --card-border-radius: 16px;
+    
+    /* Transitions */
+    --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Shadows */
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ========================================
+   GLOBAL BASE STYLES & CSS RESET
+======================================== */
+
+/* CSS Reset untuk menghilangkan gaya default browser */
+* { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+}
+
+/* Aturan global untuk HTML */
+html { 
+    scroll-behavior: smooth; 
+    overflow-y: scroll; /* Mencegah layout 'melompat' karena scrollbar */
+}
+
+/* Aturan global untuk BODY */
+body {
+    background-color: var(--bg-light); /* Latar belakang default adalah putih */
+    color: var(--text-dark);
+    font-family: var(--font-body);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}

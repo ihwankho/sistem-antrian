@@ -26,14 +26,6 @@
     }
 </style>
 
-@php
-    // Siapkan data loket agar mudah dicari berdasarkan ID
-    $loketsById = [];
-    foreach ($lokets as $loket) {
-        $loketsById[$loket['id']] = $loket['nama_loket'];
-    }
-@endphp
-
 <div class="container-fluid">
     <div class="card main-card p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -79,9 +71,8 @@
                             @endif
                         </td>
                         <td>
-                            @if($user['role'] == 2 && !empty($user['id_loket']))
-                                {{-- Cari nama loket dari array $loketsById --}}
-                                {{ $loketsById[$user['id_loket']] ?? 'Loket Dihapus' }}
+                            @if($user['role'] == 2 && !empty($user['nama_loket']))
+                                {{ $user['nama_loket'] }}
                             @else
                                 —
                             @endif

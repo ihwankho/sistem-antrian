@@ -1,29 +1,61 @@
 <?php
 
-
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\LoginWebController;
 use App\Http\Controllers\DashboardController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DepartemenWebController;
 use App\Http\Controllers\LoketController;
+use App\Http\Controllers\PelayananController;
 use App\Http\Controllers\LandingPageController;
-use App\Http\Controllers\AntrianController; // Controller Web
-use App\Http\Controllers\PanggilanController; // Controller Panggilan
-use App\Http\Controllers\DisplayController; // Controller Display
+use App\Http\Controllers\AntrianController;
+use App\Http\Controllers\PanggilanController;
+use App\Http\Controllers\DisplayController;
+use App\Http\Controllers\ReportController;
 
-//LandingPage
+// LandingPage
 Route::get('/', [LandingPageController::class, 'index'])->name('landing.page');
 
 // Autentikasi
-Route::get('/login', [LoginWebController::class, 'showLogin'])->name('login.form');
-Route::post('/login', [LoginWebController::class, 'login'])->name('login.web');
+Route::get('/login', [LoginWebController::class, 'showLogin'])->name('login');
+Route::post('/login', [LoginWebController::class, 'login'])->name('login.post');
 
-// Dashboard
-Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard');
+// ======================
+// RUTE UNTUK PENGUNJUNG (TANPA LOGIN)
+// ======================
 
-// Pengguna - Resource Controller
-Route::prefix('pengguna')->name('pengguna.')->group(function () {
+// Antrian - untuk pengunjung (tanpa login)
+Route::prefix('antrian')->name('antrian.')->group(function () {
+    Route::get('/pilih-layanan', [AntrianController::class, 'pilihLayanan'])->name('pilih-layanan');
+    Route::get('/isi-data', [AntrianController::class, 'isiData'])->name('isi-data');
+    Route::post('/buat-tiket', [AntrianController::class, 'buatTiket'])->name('buat-tiket');
+    Route::get('/tiket', [AntrianController::class, 'tampilTiket'])->name('tiket');
+    Route::get('/tiket/{id}', [AntrianController::class, 'detailTiket'])->name('detail-tiket');
+});
+
+// Display Antrian - Tampilan Public (tanpa auth)
+Route::prefix('display')->name('display.')->group(function() {
+    Route::get('/', [DisplayController::class, 'index'])->name('index');
+    Route::get('/queue-data', [DisplayController::class, 'getQueueData'])->name('queue-data');
+    Route::get('/current-calling', [DisplayController::class, 'getCurrentCallingOnly'])->name('current-calling');
+    Route::get('/loket/{id}', [DisplayController::class, 'getQueueByLoket'])->name('loket');
+    Route::get('/daily-summary', [DisplayController::class, 'getDailySummary'])->name('daily-summary');
+    Route::get('/ping', [DisplayController::class, 'ping'])->name('ping');
+});
+
+// ======================
+// RUTE YANG MEMERLUKAN LOGIN
+// ======================
+
+// Rute baru untuk dashboard
+Route::get('/dashboard', [DashboardController::class, 'showDashboard'])
+    ->name('dashboard')
+    ->middleware(['web.auth', 'role:1,2']); // Izinkan role 1 (admin) dan 2 (petugas)
+
+// Pengguna - hanya untuk admin (role 1)
+Route::prefix('pengguna')->name('pengguna.')->middleware(['web.auth', 'role:1'])->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::get('/create', [UserController::class, 'create'])->name('create');
     Route::post('/', [UserController::class, 'store'])->name('store');
@@ -32,8 +64,8 @@ Route::prefix('pengguna')->name('pengguna.')->group(function () {
     Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy');
 });
 
-//Departemens
-Route::prefix('departemen')->name('departemen.')->group(function () {
+// Departemen - hanya untuk admin (role 1)
+Route::prefix('departemen')->name('departemen.')->middleware(['web.auth', 'role:1'])->group(function () {
     Route::get('/', [DepartemenWebController::class, 'index'])->name('index');
     Route::get('/create', [DepartemenWebController::class, 'create'])->name('create');
     Route::post('/', [DepartemenWebController::class, 'store'])->name('store');
@@ -42,62 +74,104 @@ Route::prefix('departemen')->name('departemen.')->group(function () {
     Route::delete('/{id}', [DepartemenWebController::class, 'destroy'])->name('destroy');
 });
 
-//Loket
-Route::prefix('loket')->name('loket.')->group(function () {
+// Loket - hanya untuk admin (role 1)
+Route::prefix('loket')->name('loket.')->middleware(['web.auth', 'role:1'])->group(function () {
     Route::get('/', [LoketController::class, 'index'])->name('index');
-    
-    // Rute untuk menampilkan form tambah data
     Route::get('/create', [LoketController::class, 'create'])->name('create');
-    
-    // Rute untuk menyimpan data baru
     Route::post('/', [LoketController::class, 'store'])->name('store');
-    
-    // Rute untuk menampilkan form edit data
-    Route::get('/{loket}/edit', [LoketController::class, 'edit'])->name('edit');
-    
-    // Rute untuk menyimpan perubahan data
-    Route::put('/{loket}', [LoketController::class, 'update'])->name('update');
-    
-    // Rute untuk menghapus data
-    Route::delete('/{loket}', [LoketController::class, 'destroy'])->name('destroy');
+    Route::get('/{id}/edit', [LoketController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [LoketController::class, 'update'])->name('update');
+    Route::delete('/{id}', [LoketController::class, 'destroy'])->name('destroy');
 });
 
-// Antrian
-Route::prefix('antrian')->name('antrian.')->group(function () {
-    Route::get('/pilih-layanan', [AntrianController::class, 'pilihLayanan'])->name('pilih-layanan');
-    Route::get('/isi-data', [AntrianController::class, 'isiData'])->name('isi-data');
-    Route::post('/buat-tiket', [AntrianController::class, 'buatTiket'])->name('buat-tiket');
-    Route::get('/tiket', [AntrianController::class, 'tampilTiket'])->name('tiket');
-    Route::get('/antrian_all', [AntrianController::class, 'all']);
+// Pelayanan - hanya untuk admin (role 1)
+Route::prefix('pelayanan')->name('pelayanan.')->middleware(['web.auth', 'role:1'])->group(function () {
+    Route::get('/', [PelayananController::class, 'index'])->name('index');
+    Route::get('/create', [PelayananController::class, 'create'])->name('create');
+    Route::post('/', [PelayananController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [PelayananController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [PelayananController::class, 'update'])->name('update');
+    Route::delete('/{id}', [PelayananController::class, 'destroy'])->name('destroy');
 });
 
-// Panggilan Antrian
-Route::prefix('panggilan')->name('panggilan.')->group(function() {
+// Antrian - untuk admin (role 1) dan petugas (role 2) - hanya bagian yang memerlukan auth
+Route::prefix('antrian')->name('antrian.')->middleware(['web.auth', 'role:1,2'])->group(function () {
+    Route::get('/antrian_all', [AntrianController::class, 'all'])->name('all');
+});
+
+// Panggilan Antrian - untuk admin (role 1) dan petugas (role 2)
+Route::prefix('panggilan')->name('panggilan.')->middleware(['web.auth', 'role:1,2'])->group(function() {
     Route::get('/admin', [PanggilanController::class, 'admin'])->name('admin');
-    Route::post('/admin/next', [PanggilanController::class, 'next'])->name('admin.next');
-    Route::post('/admin/recall', [PanggilanController::class, 'recall'])->name('admin.recall');
-    Route::post('/admin/finish', [PanggilanController::class, 'finish'])->name('admin.finish');
-    Route::post('/admin/skip', [PanggilanController::class, 'skip'])->name('admin.skip');
+    Route::get('/petugas', [PanggilanController::class, 'petugas'])->name('petugas');
+    
+    // Actions
+    Route::post('/next', [PanggilanController::class, 'next'])->name('next');
+    Route::post('/recall', [PanggilanController::class, 'recall'])->name('recall');
+    Route::post('/finish', [PanggilanController::class, 'finish'])->name('finish');
+    Route::post('/skip', [PanggilanController::class, 'skip'])->name('skip');
+    
+    // Statistik untuk petugas
+    Route::get('/stats', [PanggilanController::class, 'getStats'])->name('stats');
+    
+    // Route khusus admin
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::post('/next', [PanggilanController::class, 'next'])->name('next');
+        Route::post('/recall', [PanggilanController::class, 'recall'])->name('recall');
+        Route::post('/finish', [PanggilanController::class, 'finish'])->name('finish');
+        Route::post('/skip', [PanggilanController::class, 'skip'])->name('skip');
+    });
+    
+    // Route khusus petugas
+    Route::prefix('petugas')->name('petugas.')->group(function () {
+        Route::post('/next', [PanggilanController::class, 'next'])->name('next');
+        Route::post('/recall', [PanggilanController::class, 'recall'])->name('recall');
+        Route::post('/finish', [PanggilanController::class, 'finish'])->name('finish');
+        Route::post('/skip', [PanggilanController::class, 'skip'])->name('skip');
+        Route::get('/stats', [PanggilanController::class, 'getStats'])->name('stats');
+    });
 });
 
-// Display Antrian - Tampilan Public
-Route::prefix('display')->name('display.')->group(function() {
-    // Halaman utama display
-    Route::get('/', [DisplayController::class, 'index'])->name('index');
-    
-    // API endpoints untuk data antrian
-    Route::get('/queue-data', [DisplayController::class, 'getQueueData'])->name('queue-data');
-    
-    // API untuk mendapatkan antrian yang sedang dipanggil saja
-    Route::get('/current-calling', [DisplayController::class, 'getCurrentCallingOnly'])->name('current-calling');
-    
-    // API untuk mendapatkan detail antrian berdasarkan loket
-    Route::get('/loket/{loketId}', [DisplayController::class, 'getQueueByLoket'])->name('loket');
-    
-    // API untuk mendapatkan ringkasan harian
-    Route::get('/daily-summary', [DisplayController::class, 'getDailySummary'])->name('daily-summary');
-    
-    // Endpoint untuk testing koneksi
-    Route::get('/ping', [DisplayController::class, 'ping'])->name('ping');
+// Logout
+Route::post('/logout', function () {
+    Auth::logout();
+    return redirect('/login');
+})->name('logout');
+
+// Report
+Route::get('/reports/activity', [ReportController::class, 'showActivityReport'])
+    ->name('reports.activity')
+    ->middleware(['web.auth', 'role:1,2']);
+Route::get('/reports/activity/export', [ReportController::class, 'exportExcel'])->name('reports.activity.export');
+
+// Test API connection
+Route::get('/test-api-connection', function () {
+    try {
+        $apiUrl = env('API_BASE_URL', 'http://127.0.0.1:8001');
+        $departemenResponse = Http::timeout(10)->get($apiUrl . '/api/departemen');
+        $loketResponse = Http::timeout(10)->get($apiUrl . '/api/lokets');
+        
+        return response()->json([
+            'departemen_status' => $departemenResponse->status(),
+            'departemen_successful' => $departemenResponse->successful(),
+            'departemen_body' => $departemenResponse->json(),
+            'loket_status' => $loketResponse->status(),
+            'loket_successful' => $loketResponse->successful(),
+            'loket_body' => $loketResponse->json(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
 });
 
+// Fallback route
+Route::fallback(function () {
+    if (Auth::check()) {
+        return match (Auth::user()->role) {
+            1 => redirect('/dashboard'),
+            2 => redirect('/panggilan/petugas'),
+            default => redirect('/panggilan/petugas'),
+        };
+    }
+    return redirect('/login')->with('error', 'Halaman tidak ditemukan.');
+});
+Route::get('/tiket/detail/{id}', [AntrianController::class, 'detailTiket'])->name('tiket.detail');

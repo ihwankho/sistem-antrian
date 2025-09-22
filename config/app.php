@@ -122,5 +122,18 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+        /*
+    |--------------------------------------------------------------------------
+    | API Base URL
+    |--------------------------------------------------------------------------
+    |
+    | This value digunakan sebagai base URL untuk API eksternal.
+    | Pastikan sudah didefinisikan di file .env dengan key API_BASE_URL
+    |
+    */
+
+    'api_base_url' => env('API_BASE_URL', 'http://127.0.0.1:8001/api'),
+
+
 
 ];

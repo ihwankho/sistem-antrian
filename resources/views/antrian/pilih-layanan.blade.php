@@ -1,61 +1,50 @@
 @extends('layouts.landing')
 
 @push('styles')
-<!-- Bootstrap 5 CDN -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{{-- Memuat file CSS yang sudah dipisah. Atribut turbo-track penting untuk navigasi --}}
+<link rel="stylesheet" href="{{ asset('css/pilih-layanan.css') }}" data-turbo-track="reload">
 @endpush
 
 @section('content')
-<div class="bg-light py-5">
+
+<div class="page-container">
     <div class="container">
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <strong>Perhatian!</strong> {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-
-        @if (!empty($pelayananGrouped))
-            @foreach ($pelayananGrouped as $departemen => $pelayanans)
-                <div class="mb-5">
-                    <h2 class="h5 border-bottom pb-2 mb-3 text-dark fw-semibold">
-                        {{ $departemen }}
-                    </h2>
-
-                    <div class="row g-3">
-                        @foreach ($pelayanans as $layanan)
-                            <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+        
+        <div class="section-heading">
+            <h2>Pilihan Layanan</h2>
+            <p>Silakan pilih jenis layanan yang Anda perlukan di bawah ini.</p>
+        </div>
+        
+        <div class="service-container">
+            @if (!empty($pelayananGrouped))
+                @foreach ($pelayananGrouped as $departemen => $pelayanans)
+                    <section class="department-section">
+                        <h3 class="department-title">{{ $departemen }}</h3>
+                        <div class="service-grid">
+                            @foreach ($pelayanans as $layanan)
                                 <form action="{{ route('antrian.isi-data') }}" method="GET">
                                     <input type="hidden" name="id_pelayanan" value="{{ $layanan['id'] }}">
-                                    <button type="submit" class="btn w-100 text-start border border-light-subtle shadow-sm p-3 rounded-3 bg-white hover-shadow transition">
-                                        <h5 class="text-primary fw-semibold mb-1">
-                                            {{ $layanan['nama_layanan'] }}
-                                        </h5>
-                                        <p class="text-muted small mb-0">
-                                            Klik untuk mengambil nomor antrian
-                                        </p>
+                                    <button type="submit" class="service-card">
+                                        <div class="card-text">
+                                            <p class="title">{{ $layanan['nama_layanan'] }}</p>
+                                            <p class="description">Klik untuk melanjutkan</p>
+                                        </div>
                                     </button>
                                 </form>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
+                    </section>
+                @endforeach
+            @else
+                <div class="text-center p-5 bg-white rounded-3 shadow-sm">
+                    <h3 class="department-title">Tidak Ada Layanan</h3>
+                    <p class="text-muted">Saat ini belum ada layanan yang tersedia. Silakan coba lagi nanti.</p>
+                    <a href="{{ route('landing.page') }}" class="btn mt-3" style="background: var(--primary-green); color: white; border-radius: 50px; padding: 10px 20px;">
+                        Kembali ke Halaman Utama
+                    </a>
                 </div>
-            @endforeach
-        @else
-            <div class="text-center py-5">
-                <div class="card border shadow-sm mx-auto" style="max-width: 400px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark">Layanan Tidak Tersedia</h5>
-                        <p class="card-text text-muted small">
-                            Saat ini belum ada layanan yang tersedia.
-                        </p>
-                        <a href="{{ route('landing.page') }}" class="btn btn-primary mt-2">
-                            Kembali ke Halaman Utama
-                        </a>
-                    </div>
-                </div>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 </div>
 @endsection

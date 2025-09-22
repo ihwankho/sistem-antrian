@@ -6,11 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ isset($title) ? $title . ' - ' : '' }}Antrian Digital PTSP</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Toastr CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
     
     <style>
@@ -169,6 +166,7 @@
         .sidebar-footer {
             padding: 20px;
             border-top: 1px solid #f1f5f9;
+            position: relative;
         }
 
         .user-profile {
@@ -193,21 +191,17 @@
             object-fit: cover;
         }
         
-        .user-info h4 {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-            color: #1e293b;
-        }
 
         .user-info p {
             margin: 0;
-            font-size: 12px;
-            color: #64748b;
+            font-size: 14px;
+            font-weight: 600;
+            color: #000000;
         }
 
         .user-menu {
             color: #94a3b8;
+            margin-left: auto;
         }
 
         /* Mobile Toggle */
@@ -337,17 +331,71 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Dropdown Menu Styles */
+        .user-dropdown-menu {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            width: calc(100% - 40px);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 10px 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .user-dropdown-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .dropdown-item i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        .icon-logo {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
+
     </style>
     
-    <!-- Custom Styles dari halaman -->
     @stack('styles')
 </head>
 <body>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-brand">
-                <div class="brand-icon">
-                    <i class="material-icons">account_balance</i>
+                <div class="icon-logo ">
+                    <img src="{{ asset('images/logo.webp') }}" alt="Logo" class="icon-logo">
                 </div>
                 <div class="brand-text">
                     <h3>PTSP</h3>
@@ -361,18 +409,23 @@
                 <div class="nav-section">
                     <span class="nav-section-title">MENU UTAMA</span>
                     <ul class="nav-list">
+                        @if(in_array(Auth::user()->role, [1, 2]))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('dashboard') ?? '/dashboard' }}">
                                 <div class="nav-icon"><i class="material-icons">dashboard</i></div>
                                 <span>Beranda</span>
                             </a>
                         </li>
+                        @endif
+                        
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('panggilan.admin') ?? '/panggilan/admin' }}">
                                 <div class="nav-icon"><i class="material-icons">call</i></div>
                                 <span>Panggilan</span>
                             </a>
                         </li>
+                        
+                        @if(Auth::user()->role === 1)
                         <li class="nav-item has-submenu">
                             <a class="nav-link" href="#">
                                 <div class="nav-icon"><i class="material-icons">business</i></div>
@@ -384,40 +437,25 @@
                                 <li class="nav-item"><a class="nav-link" href="/pelayanan"><span>Layanan</span></a></li>
                             </ul>
                         </li>
+                        @endif
                     </ul>
                 </div>
+                
+                @if(in_array(Auth::user()->role, [1, 2]))
                 <div class="nav-section">
                     <span class="nav-section-title">LAPORAN</span>
                     <ul class="nav-list">
-                        <li class="nav-item has-submenu">
-                            <a class="nav-link" href="#">
-                                <div class="nav-icon"><i class="material-icons">queue</i></div>
-                                <span>Manajemen Antrian</span>
-                            </a>
-                            <ul class="submenu">
-                                <li class="nav-item"><a class="nav-link" href="/antrian/daftar"><span>Daftar Antrian</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/antrian/aktif"><span>Antrian Aktif</span></a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item has-submenu">
-                            <a class="nav-link" href="#">
-                                <div class="nav-icon"><i class="material-icons">bar_chart</i></div>
-                                <span>Statistik</span>
-                            </a>
-                             <ul class="submenu">
-                                <li class="nav-item"><a class="nav-link" href="/statistik/harian"><span>Harian</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/statistik/mingguan"><span>Mingguan</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="/statistik/bulanan"><span>Bulanan</span></a></li>
-                            </ul>
-                        </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/laporan/terlewat">
-                                <div class="nav-icon"><i class="material-icons">schedule</i></div>
-                                <span>Terlewat / Lembur</span>
+                            <a class="nav-link" href="/reports/activity">
+                                <div class="nav-icon"><i class="material-icons">summarize</i></div>
+                                <span>Laporan Aktivitas</span>
                             </a>
                         </li>
                     </ul>
                 </div>
+                @endif
+                
+                @if(Auth::user()->role === 1)
                 <div class="nav-section">
                     <span class="nav-section-title">PENGATURAN</span>
                     <ul class="nav-list">
@@ -427,33 +465,49 @@
                                 <span>Pengguna</span>
                             </a>
                         </li>
-                        <li class="nav-item has-submenu">
-                            <a class="nav-link" href="#">
-                                <div class="nav-icon"><i class="material-icons">settings</i></div>
-                                <span>Pengaturan Sistem</span>
-                            </a>
-                            <ul class="submenu">
-                               <li class="nav-item"><a class="nav-link" href="/pengaturan/umum"><span>Pengaturan Umum</span></a></li>
-                               <li class="nav-item"><a class="nav-link" href="/pengaturan/tampilan"><span>Tampilan</span></a></li>
-                               <li class="nav-item"><a class="nav-link" href="/pengaturan/notifikasi"><span>Notifikasi</span></a></li>
-                           </ul>
-                        </li>
+
                     </ul>
                 </div>
+                @endif
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-profile">
-                    <div class="user-avatar">
-                        <img src="https://ui-avatars.com/api/?name=Admin+PTSP&background=6366f1&color=fff" alt="Admin">
+                <div class="user-profile" id="userProfileDropdown">
+                    <div class="user-profile" id="userProfileDropdown">
+                        <div class="user-avatar">
+                            @if(Auth::user()->foto)
+                            <img src="{{ asset('storage/' . Auth::user()->foto) }}" alt="{{ Auth::user()->name }}" class="user-avatar">
+                            @else
+                                <div class="user-avatar-placeholder">
+                                    <i class="material-icons" style="font-size: 20px;">person</i>
+                                </div>
+                            @endif
+                        </div>
                     </div>
+                    
                     <div class="user-info">
-                        <h4>{{ Auth::user()->name ?? 'Admin PTSP' }}</h4>
-                        <p>{{ Auth::user()->role ?? 'Administrator' }}</p>
+                        <p>
+                            @if(Auth::user()->role === 1)
+                                Admin PTSP
+                            @elseif(Auth::user()->role === 2)
+                                Petugas PTSP
+                            @else
+                                Pengguna
+                            @endif
+                        </p>
                     </div>
                     <div class="user-menu">
                         <i class="material-icons">more_vert</i>
                     </div>
+                </div>
+
+                <div class="user-dropdown-menu" id="userDropdownMenu">
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="dropdown-item">
+                            <i class="material-icons">exit_to_app</i> Logout
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -470,13 +524,10 @@
         </div>
     </main>
 
-    <!-- jQuery - WAJIB DI-LOAD PERTAMA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     <script>
@@ -534,6 +585,8 @@
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         const submenuItems = document.querySelectorAll('.has-submenu');
+        const userProfileDropdown = document.getElementById('userProfileDropdown');
+        const userDropdownMenu = document.getElementById('userDropdownMenu');
         
         // Fungsi untuk membuka/menutup sidebar
         function toggleSidebar() {
@@ -583,6 +636,23 @@
                 });
             }
         });
+
+        // Menangani dropdown user profile
+        if (userProfileDropdown && userDropdownMenu) {
+            userProfileDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdownMenu.classList.toggle('active');
+            });
+
+            // Tutup dropdown ketika klik di luar
+            document.addEventListener('click', function(e) {
+                if (userDropdownMenu.classList.contains('active') && 
+                    !userProfileDropdown.contains(e.target) && 
+                    !userDropdownMenu.contains(e.target)) {
+                    userDropdownMenu.classList.remove('active');
+                }
+            });
+        }
 
         // Set active menu berdasarkan URL
         function setActiveMenu() {
@@ -750,7 +820,48 @@
     console.log('🔧 Helper functions tersedia: showNotification, setButtonLoading, handleAjaxError, formatCurrency, formatDate');
     </script>
 
-    <!-- Custom Scripts dari halaman -->
     @stack('scripts')
+    <script>
+        // ===============================
+        // GLOBAL JAVASCRIPT CONFIGURATION
+        // ===============================
+        
+        // Fungsi untuk menangani error response dari API
+        function handleApiError(error) {
+            if (error.status === 401 || error.status === 403) {
+                // Unauthorized or Forbidden - redirect to login
+                window.showNotification('error', 'Sesi Anda telah berakhir atau Anda tidak memiliki akses. Silakan login kembali.');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            } else {
+                window.showNotification('error', 'Terjadi kesalahan pada server: ' + error.statusText);
+            }
+        }
+        
+        // Interceptor untuk menangani error response
+        if (typeof $ !== 'undefined') {
+            $(document).ajaxComplete(function(event, xhr, settings) {
+                if (xhr.status === 401 || xhr.status === 403) {
+                    handleApiError(xhr);
+                }
+            });
+        }
+        
+        // Fungsi untuk menangani error fetch
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    if (response.status === 401 || response.status === 403) {
+                        handleApiError({
+                            status: response.status,
+                            statusText: response.statusText
+                        });
+                    }
+                    return response;
+                });
+        };
+        </script>
 </body>
 </html>

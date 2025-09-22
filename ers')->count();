@@ -1,0 +1,12 @@
+Users table columns: Array
+(
+    [0] => id
+    [1] => nama
+    [2] => nama_pengguna
+    [3] => password
+    [4] => foto
+    [5] => role
+    [6] => id_loket
+    [7] => created_at
+    [8] => updated_at
+)
