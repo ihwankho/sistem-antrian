@@ -1,7 +1,11 @@
+/* ========================================= */
+/* == BAGIAN 1: GAYA KARTU & HALAMAN      == */
+/* ========================================= */
+
 .page-container {
-    padding: 60px 24px;
-    background-color: #f4f7f6;
-    min-height: calc(100vh - 200px);
+    padding-top: 120px;
+    padding-bottom: 80px;
+    background-color: #f8f9fa;
 }
 
 .section-heading {
@@ -11,70 +15,178 @@
 
 .section-heading h2 {
     font-family: var(--font-heading);
-    font-size: clamp(32px, 5vw, 42px);
-    font-weight: 700;
+    font-size: 2.5rem;
     color: var(--primary-green);
+    margin: 0;
 }
 
-.section-heading p {
-    font-size: 1.1rem;
-    color: #555;
-    max-width: 700px;
-    margin: 10px auto 0 auto;
-}
-
-.department-section {
-    margin-bottom: 50px;
-}
-
-.department-title {
-    font-family: var(--font-heading);
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text-dark);
-    margin: 0 0 24px 0;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.service-grid {
+.department-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
 }
 
-.service-card {
+.department-card {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+    text-align: center;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.department-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--primary-green);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+}
+
+.card-main-link {
+    text-decoration: none;
+    color: inherit;
+    padding: 30px 25px;
+    flex-grow: 1; /* Membuat area ini memenuhi sisa ruang */
+}
+
+.department-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-green), #0a5a40);
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    background-color: #fff;
-    border: 1px solid #e9ecef;
-    border-left: 5px solid transparent;
-    border-radius: 8px;
-    padding: 24px;
-    cursor: pointer;
-    transition: all 0.25s ease-in-out;
-    width: 100%;
-    text-align: left;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    min-height: 90px;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 8px 15px rgba(10, 69, 49, 0.2);
 }
 
-.service-card:hover {
-    transform: scale(1.03);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    border-left-color: var(--accent-gold);
-}
-
-.card-text .title {
-    font-family: var(--font-body);
-    font-weight: 600;
-    font-size: 1.05rem;
+.department-name {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--text-dark);
-    margin: 0 0 4px 0;
+    margin-bottom: 10px;
 }
 
-.card-text .description {
-    font-size: 0.85rem;
-    color: #6c757d;
+.department-description {
+    color: var(--text-gray);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.service-modal-trigger {
+    width: 100%;
+    border: none;
+    border-top: 1px solid #f0f0f0;
+    padding: 15px;
+    font-weight: 600;
+    background-color: #f8f9fa;
+    color: var(--primary-green);
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.service-modal-trigger:hover {
+    background-color: var(--primary-green);
+    color: white;
+}
+
+/* Penanganan Jika Tidak Ada Layanan (No Change) */
+.no-services-container { text-align: center; padding: 60px 20px; background: #ffffff; border-radius: 16px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05); margin-top: 30px; border: 1px solid #e9ecef; }
+.no-services-icon { width: 80px; height: 80px; background: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; color: #adb5bd; font-size: 32px; }
+.back-button { background: var(--primary-green); color: white; border: none; border-radius: 50px; padding: 12px 30px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; margin-top: 20px; }
+.back-button:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(10, 69, 49, 0.2); color: white; text-decoration: none; }
+
+/* ========================================= */
+/* == BAGIAN 2: GAYA BARU UNTUK MODAL POP-UP == */
+/* ========================================= */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: white;
+    padding: 25px 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
     margin: 0;
+    font-family: var(--font-heading);
+    color: var(--primary-green);
+    font-size: 1.4rem;
+}
+
+.modal-close-btn {
+    border: none;
+    background: none;
+    font-size: 28px;
+    font-weight: bold;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.modal-body ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-body li {
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-weight: 500;
+    border-left: 4px solid var(--accent-gold);
+}
+
+@media (max-width: 768px) {
+    .department-grid { grid-template-columns: 1fr; gap: 20px; }
 }

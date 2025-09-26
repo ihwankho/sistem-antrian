@@ -40,6 +40,12 @@ Route::apiResource('pelayanan', PelayananController::class)->only(['index', 'sho
 Route::post('/antrian', [AntrianController::class, 'store']);
 Route::get('/antrian/show/{id}', [AntrianController::class, 'ShowPe']);
 Route::get('/antrian_all', [AntrianController::class, 'getAllAntrian']);
+Route::get('/antrian/check', [AntrianController::class, 'check']);
+Route::get('/tiket/{uuid}', [AntrianController::class, 'showPublicTicketByUuid']);
+Route::get('/antrian/detail/{uuid}', [AntrianController::class, 'showDetailByUuid']);
+Route::get('/antrian/search', [AntrianController::class, 'searchByHp']);
+
+
 // ===================================================================
 // ROUTE TERPROTEKSI - Memerlukan token via Sanctum
 // ===================================================================

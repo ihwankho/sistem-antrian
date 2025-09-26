@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Antrian extends Model
 {
     protected $fillable = [
+        'uuid',
         'nomor_antrian',
         'status_antrian',
         'id_pengunjung',
