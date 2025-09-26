@@ -94,7 +94,7 @@ class AntrianController extends Controller
         try {
             // Siapkan data yang akan dikirim
             $postData = $validatedData;
-            
+
             // 2. Tambahkan NIK secara manual dengan nilai 0
             $postData['nik'] = 0;
 
@@ -130,7 +130,7 @@ class AntrianController extends Controller
                 // Redirect ke halaman tiket dengan membawa data dari API
                 return redirect()->route('antrian.tiket')->with('tiket', $tiketData);
             }
-            
+
             // Jika API mengembalikan error
             Log::error('API mengembalikan error saat membuat tiket', ['response' => $response->body()]);
             return back()->withErrors($response->json('errors') ?? ['Terjadi kesalahan dari server API'])->withInput();
@@ -141,14 +141,14 @@ class AntrianController extends Controller
             return back()->with('error', 'Gagal terhubung ke server. Silakan coba lagi nanti.')->withInput();
         }
     }
-    
+
     /**
      * Menampilkan halaman tiket yang sudah dibuat.
      */
     public function tampilTiket()
     {
         $tiket = session('tiket');
-    
+
         if (!$tiket) {
             return redirect()->route('landing.page');
         }
@@ -165,12 +165,12 @@ class AntrianController extends Controller
         try {
             // Panggilan ini sekarang sudah benar karena rute API telah diperbaiki di routes/api.php
             $response = Http::get($this->apiAntrianUrl . '/show/' . $id);
-            
+
             if ($response->successful() && !empty($response->json())) {
                 $antrianDetail = $response->json();
                 return view('antrian.detail-tiket', ['tiket' => $antrianDetail]);
             }
-            
+
             // Fallback jika API gagal atau tiket tidak ditemukan
             Log::warning('Gagal mencari detail tiket via API', ['id' => $id, 'response' => $response->body()]);
             return view('antrian.detail-tiket', ['tiket' => null]);

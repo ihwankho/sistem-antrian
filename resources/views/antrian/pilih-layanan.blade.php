@@ -9,12 +9,12 @@
 
 <div class="page-container">
     <div class="container">
-        
+
         <div class="section-heading">
             <h2>Pilihan Layanan</h2>
             <p>Silakan pilih jenis layanan yang Anda perlukan di bawah ini.</p>
         </div>
-        
+
         <div class="service-container">
             @if (!empty($pelayananGrouped))
                 @foreach ($pelayananGrouped as $departemen => $pelayanans)
