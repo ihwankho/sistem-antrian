@@ -31,9 +31,14 @@ Route::prefix('antrian')->name('antrian.')->group(function () {
     Route::get('/pilih-layanan', [AntrianController::class, 'pilihLayanan'])->name('pilih-layanan');
     Route::get('/isi-data', [AntrianController::class, 'isiData'])->name('isi-data');
     Route::post('/buat-tiket', [AntrianController::class, 'buatTiket'])->name('buat-tiket');
-    Route::get('/tiket', [AntrianController::class, 'tampilTiket'])->name('tiket');
-    Route::get('/tiket/{id}', [AntrianController::class, 'detailTiket'])->name('detail-tiket');
+    Route::get('/tiket/{id}', [AntrianController::class, 'tampilTiket'])->name('antrian.tiket');
+    Route::get('/tiket/{uuid}', [AntrianController::class, 'tampilTiket'])->name('tiket');
+    Route::post('/tiket/cari', [AntrianController::class, 'cariTiket'])->name('cari');
+    Route::get('/tiket/detail/{uuid}', [AntrianController::class, 'detailTiket'])->name('tiket.detail');
+    Route::post('/api/cari-by-nik', [AntrianController::class, 'cariTiketJson'])->name('api.cari');
+
 });
+
 
 // Display Antrian - Tampilan Public (tanpa auth)
 Route::prefix('display')->name('display.')->group(function() {
@@ -174,4 +179,3 @@ Route::fallback(function () {
     }
     return redirect('/login')->with('error', 'Halaman tidak ditemukan.');
 });
-Route::get('/tiket/detail/{id}', [AntrianController::class, 'detailTiket'])->name('tiket.detail');

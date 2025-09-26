@@ -1,96 +1,12 @@
 @extends('layouts.landing')
 
 @push('styles')
-<style>
-    .page-container {
-        padding: 60px 24px;
-        background-color: #f4f7f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: calc(100vh - 200px);
-    }
-    .detail-panel {
-        max-width: 600px;
-        width: 100%;
-        background: #fff;
-        border-radius: 16px;
-        box-shadow: 0 12px 28px rgba(0,0,0,0.1);
-        border: 1px solid #e9ecef;
-    }
-    .panel-header {
-        padding: 24px;
-        border-bottom: 1px solid #e9ecef;
-        text-align: center;
-    }
-    .panel-header h2 {
-        font-family: var(--font-heading);
-        font-size: 1.8rem;
-        margin: 0;
-        color: var(--primary-green);
-    }
-    .panel-header p {
-        margin: 4px 0 0 0;
-        color: #6c757d;
-    }
-    .panel-body {
-        padding: 30px;
-        text-align: center;
-    }
-    .profile-photo {
-        width: 150px;
-        height: 150px;
-        /* [DIPERBAIKI] Mengubah foto menjadi kotak dengan sudut tumpul */
-        border-radius: 16px; 
-        object-fit: cover;
-        border: 5px solid #fff;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        margin-bottom: 24px;
-    }
-    .queue-number-box {
-        background-color: #e8f0ed;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 30px;
-    }
-    .queue-number-box p {
-        margin: 0;
-        font-size: 1rem;
-        color: var(--primary-green);
-    }
-    .queue-number-box span {
-        font-family: var(--font-heading);
-        font-size: 3rem;
-        font-weight: 800;
-        color: var(--primary-green);
-    }
-    .info-grid {
-        display: grid;
-        grid-template-columns: max-content 1fr;
-        gap: 12px 20px;
-        text-align: left;
-    }
-    .info-label {
-        font-weight: 600;
-        color: #343a40;
-    }
-    .info-label::after {
-        content: ":";
-    }
-    .info-value {
-        color: #555;
-        word-break: break-word;
-    }
-    .error-container {
-        text-align: center;
-    }
-</style>
+    <link rel="stylesheet" href="{{ asset('css/tiket-detail.css') }}">
 @endpush
 
 @section('content')
 
 @php
-    // Logika ini tetap sama, tidak perlu diubah
     if (isset($tiket) && !empty($tiket['pelayanan'])) {
         $idLoket = $tiket['pelayanan']['departemen']['loket']['id'];
         $allLokets = \App\Models\Loket::orderBy('id', 'ASC')->pluck('id')->toArray();
@@ -112,17 +28,17 @@
         </div>
         <div class="panel-body">
             <img src="{{ isset($tiket['pengunjung']['foto_wajah']) ? asset('storage/' . $tiket['pengunjung']['foto_wajah']) : asset('images/default-avatar.png') }}" alt="Foto Pengunjung" class="profile-photo">
-            
+
             <div class="queue-number-box">
                 <p>Nomor Antrian</p>
                 <span>{{ $nomorAntrianLengkap }}</span>
             </div>
-            
+
             <div class="info-grid">
                 <div class="info-label">Nama</div>
                 <div class="info-value">{{ $tiket['pengunjung']['nama_pengunjung'] ?? 'N/A' }}</div>
-                
-                {{-- [DIPERBAIKI] Baris NIK dan No. HP disembunyikan menggunakan komentar Blade --}}
+
+                {{-- Baris NIK dan No. HP disembunyikan menggunakan komentar Blade --}}
                 {{--
                 <div class="info-label">NIK</div>
                 <div class="info-value">{{ $tiket['pengunjung']['nik'] ?? 'N/A' }}</div>
