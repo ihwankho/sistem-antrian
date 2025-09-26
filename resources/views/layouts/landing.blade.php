@@ -8,9 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{{ asset('css/variables-base.css') }}" data-turbo-track="reload">
-    <link rel="stylesheet" href="{{ asset('css/navbar.css') }}" data-turbo-track="reload">
-    <link rel="stylesheet" href="{{ asset('css/footer.css') }}" data-turbo-track="reload">
+
+    <link rel="stylesheet" href="{{ asset('css/layout.css') }}" data-turbo-track="reload">
 
     @stack('styles')
 </head>
@@ -27,9 +26,9 @@
             <ul class="nav-links">
                 <li><a href="{{ route('landing.page') }}#home">Beranda</a></li>
                 <li><a href="{{ route('landing.page') }}#antrian">Monitor</a></li>
+                <li><a href="{{ route('landing.page') }}#cari-tiket">Cari Tiket</a></li>
                 <li><a href="{{ route('landing.page') }}#petugas">Tim Kami</a></li>
                 <li><a href="{{ route('landing.page') }}#layanan">Layanan</a></li>
-                <li><a href="{{ route('landing.page') }}#panduan">Panduan</a></li>
                 <li><a href="{{ route('antrian.pilih-layanan') }}">Ambil Tiket</a></li>
             </ul>
 
@@ -46,9 +45,9 @@
         <ul class="nav-links">
             <li><a href="{{ route('landing.page') }}#home" class="mobile-menu-link">Beranda</a></li>
             <li><a href="{{ route('landing.page') }}#antrian" class="mobile-menu-link">Monitor</a></li>
+            <li><a href="{{ route('landing.page') }}#cari-tiket" class="mobile-menu-link">Cari Tiket</a></li>
             <li><a href="{{ route('landing.page') }}#petugas" class="mobile-menu-link">Tim Kami</a></li>
             <li><a href="{{ route('landing.page') }}#layanan" class="mobile-menu-link">Layanan</a></li>
-            <li><a href="{{ route('landing.page') }}#panduan" class="mobile-menu-link">Panduan</a></li>
             <li><a href="{{ route('antrian.pilih-layanan') }}" class="mobile-menu-link">Ambil Tiket</a></li>
         </ul>
     </div>

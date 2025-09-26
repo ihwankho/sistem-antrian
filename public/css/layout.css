@@ -1,5 +1,6 @@
+
 /* ========================================
-   CSS VARIABLES
+   CSS VARIABLES & BASE STYLES
 ======================================== */
 
 :root {
@@ -31,107 +32,124 @@
     --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
+
+/* ========================================
+   GLOBAL BASE STYLES & CSS RESET
+======================================== */
+
+/* CSS Reset untuk menghilangkan gaya default browser */
+* { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+}
+
+/* Aturan global untuk HTML */
+html { 
+    scroll-behavior: smooth; 
+    overflow-y: scroll; /* Mencegah layout 'melompat' karena scrollbar */
+}
+
+/* Aturan global untuk BODY */
+body {
+    background-color: var(--bg-light); /* Latar belakang default adalah putih */
+    color: var(--text-dark);
+    font-family: var(--font-body);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
 /* ========================================
    NAVBAR STYLES
 ======================================== */
-
-.navbar { 
-    position: fixed; 
-    top: 0; 
-    width: 100%; 
-    background: rgba(255, 255, 255, 0.98); 
-    backdrop-filter: blur(20px); 
-    border-bottom: 1px solid var(--border-lighter); 
-    z-index: 1000; 
-    transition: var(--transition); 
-    box-shadow: var(--shadow-sm); 
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-lighter);
+    z-index: 1000;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
 }
 
-.nav-content { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 16px 24px; 
+.nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
 }
 
-.logo { 
-    display: flex; 
-    align-items: center; 
-    gap: 12px; 
-    font-family: var(--font-heading); 
-    font-weight: 700; 
-    font-size: 1.5rem; 
-    color: var(--primary-green); 
-    text-decoration: none; 
-}
-
-.logo-icon { 
-    width: 45px; 
-    height: 45px; 
-    background: linear-gradient(135deg, var(--primary-green), var(--accent-gold)); 
-    border-radius: 12px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    color: white; 
-    font-size: 1.2rem; 
-    box-shadow: var(--shadow-sm); 
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    /* [PERBAIKAN] Ukuran font konsisten untuk teks "E-PTSP..." */
+    font-size: 1rem;
+    color: var(--primary-green);
+    text-decoration: none;
 }
 
 .icon-logo {
-    width: 70px; 
-    height: 70px;  
+    /* [PERBAIKAN] Ukuran gambar logo yang konsisten di semua halaman */
+    width: 50px;
+    height: 50px;
     object-fit: contain;
 }
 
-.nav-links { 
-    display: flex; 
-    gap: 32px; 
-    list-style: none; 
-    align-items: center; 
+.nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+    align-items: center;
 }
 
-.nav-links a { 
-    text-decoration: none; 
-    color: var(--text-dark); 
-    font-weight: 500; 
-    transition: var(--transition-fast); 
-    position: relative; 
-    font-size: 0.95rem; 
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 500;
+    transition: var(--transition-fast);
+    position: relative;
+    font-size: 0.95rem;
 }
 
-.nav-links a:hover { 
-    color: var(--primary-green); 
+.nav-links a:hover {
+    color: var(--primary-green);
 }
 
-.nav-links a::after { 
-    content: ''; 
-    position: absolute; 
-    bottom: -4px; 
-    left: 0; 
-    width: 0; 
-    height: 2px; 
-    background: var(--accent-gold); 
-    transition: var(--transition-fast); 
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--accent-gold);
+    transition: var(--transition-fast);
 }
 
-.nav-links a:hover::after { 
-    width: 100%; 
+.nav-links a:hover::after {
+    width: 100%;
 }
 
-.mobile-menu-btn { 
-    display: none; 
-    background: none; 
-    border: none; 
-    font-size: 1.5rem; 
-    color: var(--primary-green); 
-    cursor: pointer; 
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--primary-green);
+    cursor: pointer;
     padding: 8px;
     z-index: 1001;
     position: relative;
 }
 
-/* Mobile Menu Styles */
+/* ========================================
+   MOBILE MENU STYLES
+======================================== */
 .mobile-menu {
     display: none;
     position: fixed;
@@ -174,10 +192,6 @@
     width: 100%;
 }
 
-.mobile-menu .nav-links li {
-    width: 100%;
-}
-
 .mobile-menu .nav-links a {
     font-size: 1.2rem;
     padding: 15px;
@@ -190,16 +204,22 @@
     background: var(--bg-gray-light);
     border-radius: 8px;
 }
-/* Pastikan ini ada di akhir file navbar.css Anda */
+
+/* ========================================
+   RESPONSIVE STYLES
+======================================== */
 @media (max-width: 992px) {
     .nav-links {
         display: none;
     }
+
     .mobile-menu-btn {
         display: block;
     }
-    .logo span {
-        display: none;
+
+    /* [PERBAIKAN] Menyesuaikan ukuran font logo di mobile agar proporsional */
+    .logo {
+        font-size: 0.9rem;
     }
 }
 /* ========================================
@@ -333,23 +353,5 @@
     
     .footer { 
         padding: 60px 0 30px 0; 
-    }
-}
-/* ========================================
-   RESPONSIVE NAVBAR
-======================================== */
-@media (max-width: 992px) { /* Breakpoint bisa disesuaikan, 992px atau 768px umum digunakan */
-    
-    .nav-links {
-        display: none; /* Sembunyikan link navigasi versi desktop */
-    }
-
-    .mobile-menu-btn {
-        display: block; /* Tampilkan tombol hamburger di mobile */
-    }
-    
-    /* Opsional: Sembunyikan teks panjang di logo agar rapi di mobile */
-    .logo span {
-        display: none;
     }
 }

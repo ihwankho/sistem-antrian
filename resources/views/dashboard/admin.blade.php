@@ -91,14 +91,13 @@
         border: none;
         position: relative;
         transition: all 0.3s ease;
-        height: 140px;
     }
 
     .stat-card:hover {
         transform: translateY(-8px);
         box-shadow: var(--shadow-lg);
     }
-    
+
     .stat-header {
         display: flex;
         justify-content: space-between;
@@ -144,20 +143,23 @@
         gap: var(--spacing-xl);
     }
 
-    /* ===== CHART CARD ===== */
-    .chart-card {
+    /* ===== CHART CARD & NOTIFICATION CARD ===== */
+    .chart-card,
+    .notification-card {
         background: var(--white-color);
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
         overflow: hidden;
     }
 
-    .chart-header {
+    .chart-header,
+    .notification-header {
         padding: var(--spacing-lg);
         border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     }
 
-    .chart-title {
+    .chart-title,
+    .notification-title {
         font-weight: 700;
         font-size: 1.1rem;
         color: var(--dark-color);
@@ -169,38 +171,10 @@
         height: 350px;
     }
 
-    /* ===== NOTIFICATION CARD ===== */
     .notification-card {
-        background: var(--white-color);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
         height: fit-content;
     }
-
-    .notification-header {
-        padding: var(--spacing-lg);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .notification-title {
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: var(--dark-color);
-        margin: 0;
-    }
-
-    .notification-badge {
-        background: var(--primary-color);
-        color: var(--white-color);
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
+    
     .notification-list {
         max-height: 400px;
         overflow-y: auto;
@@ -230,11 +204,7 @@
         justify-content: center;
         flex-shrink: 0;
     }
-
-    .notification-item.new .notification-icon { background-color: rgba(67, 97, 238, 0.15); color: var(--primary-color); }
-    .notification-item.warning .notification-icon { background-color: rgba(247, 37, 133, 0.15); color: var(--warning-color); }
-    .notification-item.success .notification-icon { background-color: rgba(76, 201, 240, 0.15); color: var(--success-color); }
-
+    
     .notification-text h6 {
         font-weight: 600;
         font-size: 0.95rem;
@@ -253,21 +223,12 @@
         color: #999;
     }
 
-    /* ===== FOOTER ===== */
-    .footer {
-        text-align: center;
-        color: var(--gray-color);
-        font-size: 0.9rem;
-        margin-top: var(--spacing-xl);
-        padding: var(--spacing) 0;
-    }
 
     /* ===== RESPONSIVE DESIGN ===== */
-    @media (max-width: 1200px) {
-        .content-grid { grid-template-columns: 1fr 350px; }
-    }
     @media (max-width: 992px) {
-        .content-grid { grid-template-columns: 1fr; }
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -275,6 +236,19 @@
     <div class="page-header">
         <div class="page-header-content">
             <h1 class="page-title">Dashboard Antrian</h1>
+            
+            {{-- FILTER LOKET --}}
+            <form id="loketFilterForm" method="GET" action="{{ route('dashboard') }}" class="ms-auto">
+                <select name="loket_id" class="form-select" onchange="this.form.submit()" aria-label="Filter Loket" style="background-color: rgb(255, 255, 255); border-color: rgba(255,255,255,0.3); color: rgb(0, 0, 0);">
+                    <option value="all" {{ $selectedLoket == 'all' ? 'selected' : '' }}>Semua Loket</option>
+                    @foreach($lokets as $loket)
+                        <option value="{{ $loket->id }}" {{ $selectedLoket == $loket->id ? 'selected' : '' }} style="color: black; background-color: white;">
+                            {{ $loket->nama_loket }}
+                        </option>
+                    @endforeach
+                </select>
+            </form>
+
             <div class="date-display">
                 <i class="material-icons">calendar_today</i>
                 <span id="current-date">Memuat...</span>
@@ -283,67 +257,58 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card queue">
-            <div class="stat-header">
-                <h5 class="stat-title">Antrian Hari Ini</h5>
-                <div class="stat-icon"><i class="material-icons">queue</i></div>
-            </div>
-            <h2 class="stat-value" id="queue-today">{{ $stats['today_queue'] }}</h2>
-        </div>
-        <div class="stat-card missed">
-            <div class="stat-header">
-                <h5 class="stat-title">Terlewat</h5>
-                <div class="stat-icon"><i class="material-icons">schedule</i></div>
-            </div>
-            <h2 class="stat-value" id="missed-count">{{ $stats['missed'] }}</h2>
-        </div>
-        <div class="stat-card served">
-            <div class="stat-header">
-                <h5 class="stat-title">Terlayani</h5>
-                <div class="stat-icon"><i class="material-icons">check_circle</i></div>
-            </div>
-            <h2 class="stat-value" id="served-count">{{ $stats['served'] }}</h2>
-        </div>
-        <div class="stat-card active">
-            <div class="stat-header">
-                <h5 class="stat-title">Antrian Aktif</h5>
-                <div class="stat-icon"><i class="material-icons">hourglass_empty</i></div>
-            </div>
-            <h2 class="stat-value" id="active-count">{{ $stats['active'] }}</h2>
-        </div>
+        <div class="stat-card queue"><div class="stat-header"><h5 class="stat-title">Antrian Hari Ini</h5><div class="stat-icon"><i class="material-icons">queue</i></div></div><h2 class="stat-value">{{ $stats['today_queue'] }}</h2></div>
+        <div class="stat-card missed"><div class="stat-header"><h5 class="stat-title">Terlewat</h5><div class="stat-icon"><i class="material-icons">schedule</i></div></div><h2 class="stat-value">{{ $stats['missed'] }}</h2></div>
+        <div class="stat-card served"><div class="stat-header"><h5 class="stat-title">Terlayani</h5><div class="stat-icon"><i class="material-icons">check_circle</i></div></div><h2 class="stat-value">{{ $stats['served'] }}</h2></div>
+        <div class="stat-card active"><div class="stat-header"><h5 class="stat-title">Antrian Aktif</h5><div class="stat-icon"><i class="material-icons">hourglass_empty</i></div></div><h2 class="stat-value">{{ $stats['active'] }}</h2></div>
     </div>
 
     <div class="content-grid">
-        <div class="chart-card">
-            <div class="chart-header">
-                <h5 class="chart-title">Perbandingan Antrian: Hari Ini vs Kemarin</h5>
+        {{-- Kolom Kiri untuk Semua Diagram --}}
+        <div>
+            {{-- DIAGRAM BATANG MINGGUAN --}}
+            <div class="chart-card mb-4">
+                <div class="chart-header">
+                    <h5 class="chart-title">Grafik Pengunjung 7 Hari Terakhir</h5>
+                </div>
+                <div class="chart-body">
+                    <canvas id="weeklyVisitorChart"></canvas>
+                </div>
             </div>
-            <div class="chart-body">
-                <canvas id="comparisonChart"></canvas>
+            
+            {{-- DIAGRAM DONAT --}}
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title">Status Antrian Selesai (Hari Ini)</h5>
+                </div>
+                <div class="chart-body">
+                    <canvas id="donutChart"></canvas>
+                </div>
             </div>
         </div>
         
+        {{-- Kolom Kanan untuk Notifikasi --}}
         <div class="notification-card">
             <div class="notification-header">
                 <h5 class="notification-title">Notifikasi</h5>
-                <span class="notification-badge">{{ count($notifications) }} Baru</span>
+                <span class="badge rounded-pill bg-primary">{{ count($notifications) }} Baru</span>
             </div>
-            <div class="notification-list">
+            <div class="list-group list-group-flush notification-list">
                 @forelse($notifications as $notification)
-                <div class="notification-item {{ $notification['type'] }}">
+                <a href="#" class="list-group-item list-group-item-action notification-item {{ $notification['type'] ?? '' }}">
                     <div class="notification-icon"><i class="material-icons">{{ $notification['icon'] }}</i></div>
                     <div class="notification-text">
                         <h6>{{ $notification['title'] }}</h6>
                         <p>{{ $notification['message'] }}</p>
                         <div class="notification-time">{{ $notification['time'] }}</div>
                     </div>
-                </div>
+                </a>
                 @empty
-                <div class="notification-item">
+                <div class="list-group-item notification-item">
                     <div class="notification-icon"><i class="material-icons">notifications_none</i></div>
                     <div class="notification-text">
                         <h6>Tidak ada notifikasi</h6>
-                        <p>Tidak ada aktivitas terbaru</p>
+                        <p>Tidak ada aktivitas terbaru.</p>
                     </div>
                 </div>
                 @endforelse
@@ -352,61 +317,39 @@
     </div>
 </div>
 
-<footer class="footer">
-    <p>&copy; 2025 Sistem Antrian QueueMaster. Hak Cipta Dilindungi.</p>
-</footer>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ===== DATE DISPLAY =====
+    // Menampilkan tanggal hari ini
     const dateElement = document.getElementById('current-date');
     if (dateElement) {
-        dateElement.textContent = new Date().toLocaleDateString('id-ID', { 
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-        });
+        dateElement.textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
     
-    // ===== CHART INITIALIZATION =====
-    const ctx = document.getElementById('comparisonChart');
-    if (ctx) {
-        new Chart(ctx.getContext('2d'), {
+    // Inisialisasi Diagram Batang Mingguan
+    const weeklyCtx = document.getElementById('weeklyVisitorChart');
+    if (weeklyCtx) {
+        const weeklyData = {!! json_encode($weeklyVisitorData) !!};
+        new Chart(weeklyCtx.getContext('2d'), {
             type: 'bar',
-            data: {
-                labels: {!! json_encode($chartData['labels']) !!},
-                datasets: [
-                    {
-                        label: 'Hari Ini',
-                        data: {!! json_encode($chartData['today']) !!},
-                        backgroundColor: 'rgba(67, 97, 238, 0.8)',
-                        borderRadius: 6,
-                    },
-                    {
-                        label: 'Kemarin',
-                        data: {!! json_encode($chartData['yesterday']) !!},
-                        backgroundColor: 'rgba(76, 201, 240, 0.8)',
-                        borderRadius: 6,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: {
-                            precision: 0
-                        }
-                    },
-                    x: { grid: { display: false } }
-                },
-                plugins: {
-                    legend: { position: 'top' }
-                }
-            }
+            data: { labels: weeklyData.labels, datasets: [{ label: 'Jumlah Pengunjung', data: weeklyData.data, backgroundColor: '#4e73df', hoverBackgroundColor: '#2e59d9', borderRadius: 5 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
         });
+    }
+
+    // Inisialisasi Diagram Donat
+    const donutCtx = document.getElementById('donutChart');
+    if (donutCtx) {
+        const donutData = {!! json_encode($donutChartData) !!};
+        if (donutData.served === 0 && donutData.missed === 0) {
+            donutCtx.parentElement.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted">Belum ada data.</div>';
+        } else {
+            new Chart(donutCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: ['Terlayani', 'Terlewat'], datasets: [{ data: [donutData.served, donutData.missed], backgroundColor: ['#1cc88a', '#e74a3b'], hoverBackgroundColor: ['#17a673', '#c73e31'] }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
     }
 });
 </script>
