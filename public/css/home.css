@@ -410,8 +410,12 @@
     color: black;
 }
 .modal-body ul {
-    list-style-type: none;
+    list-style: none;
     padding: 0;
+    margin: 0;
+    /* TAMBAHKAN DUA BARIS INI */
+    max-height: 600px; /* Atur tinggi maksimal pop-up */
+    overflow-y: auto;  /* Tambahkan scroll jika konten melebihi tinggi maksimal */
 }
 .modal-body li {
     background-color: var(--bg-gray-light);
@@ -425,88 +429,95 @@
 
 
 /* ========================================
-   GAYA UNTUK MODAL PENCARIAN TIKET (BARU)
+   GAYA UNTUK MODAL PENCARIAN TIKET (DISEMPURNAKAN)
 ======================================== */
 #ticket-selection-modal {
-    display: none; /* Awalnya tersembunyi */
+    /* Menggunakan gaya dari modal-overlay agar konsisten */
     position: fixed;
-    z-index: 1000;
-    left: 0;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex; /* Langsung pakai flexbox */
     justify-content: center;
-    padding: 20px;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    padding: 20px; /* Padding untuk mobile */
 }
 
 #ticket-selection-modal.active {
-    display: flex; /* Gunakan class .active dari JavaScript untuk menampilkan */
+    opacity: 1;
+    visibility: visible;
 }
 
-/* Menggunakan kembali style .modal-content Anda agar konsisten */
+/* Penyesuaian .modal-content khusus untuk modal tiket */
 #ticket-selection-modal .modal-content {
-    animation: fadeIn 0.3s ease-in-out;
+    /* Animasi muncul dari bawah, konsisten dengan modal lain */
+    transform: translateY(50px);
+    transition: transform 0.3s ease;
+    width: 90%;
+    max-width: 450px; /* Dibuat sedikit lebih kecil */
 }
 
-/* Pastikan style header dan body spesifik untuk modal ini jika perlu */
+#ticket-selection-modal.active .modal-content {
+    transform: translateY(0);
+}
+
 #ticket-selection-modal .modal-header h3 {
-    font-size: 1.3rem;
+    font-size: 1.4rem; /* Sedikit diperbesar */
 }
 
 #ticket-selection-modal .modal-body p {
-    margin-bottom: 20px;
-    font-family: var(--font-body);
-    color: var(--text-gray);
+    margin: 0 0 20px 0; /* Menghilangkan margin atas */
+    color: #6c757d;   /* Menggunakan warna abu-abu standar */
     text-align: left;
 }
 
-/* Style khusus untuk daftar tiket yang bisa di-klik */
+/* Style daftar tiket yang bisa diklik */
 #ticket-list-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px; /* Jarak antar item */
 }
 
 #ticket-list-container a {
     display: block;
-    padding: 15px;
-    border: 1px solid #ddd;
+    padding: 15px 20px;
+    border: 1px solid #e9ecef; /* Warna border lebih lembut */
     border-radius: 8px;
     text-decoration: none;
-    color: var(--text-dark);
-    transition: var(--transition);
+    color: #212529; /* Warna teks gelap standar */
+    background-color: #fff;
+    transition: all 0.2s ease-in-out;
     text-align: left;
 }
 
 #ticket-list-container a:hover {
-    border-color: var(--primary-green);
-    background-color: #f8fbf9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border-color: #4361ee; /* Warna primer saat hover */
+    background-color: #f8f9fa;
+    transform: translateY(-3px); /* Efek mengangkat sedikit lebih jelas */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 #ticket-list-container .tiket-nomor {
-    font-family: var(--font-heading);
     font-weight: 700;
-    font-size: 1.5rem;
-    color: var(--primary-green);
-    margin-bottom: 5px;
+    font-size: 1.6rem;
+    color: #4361ee; /* Warna primer */
+    margin-bottom: 8px;
 }
 
 #ticket-list-container .tiket-detail {
-    font-family: var(--font-body);
-    font-size: 0.95rem;
-    color: var(--text-gray);
+    font-size: 1rem;
+    color: #6c757d;
     line-height: 1.5;
 }
 
-/* Animasi sederhana untuk pop-up */
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+#ticket-list-container .tiket-detail strong {
+    color: #495057;
 }
 
 
