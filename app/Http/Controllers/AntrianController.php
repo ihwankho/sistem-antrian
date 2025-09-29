@@ -286,7 +286,7 @@ public function tampilTiket($uuid) // Parameter adalah $uuid
                     'nomor_lengkap' => $nomor_lengkap,
                     'nama_layanan' => $antrian->pelayanan->nama_layanan,
                     'nama_loket' => $antrian->pelayanan->departemen->loket->nama_loket,
-                    'url' => route('antrian.tiket.detail', ['uuid' => $antrian->uuid]) // URL untuk di-klik
+                    'url' => route('antrian.tiket', ['uuid' => $antrian->uuid])
                 ];
             });
     
