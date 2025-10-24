@@ -5,20 +5,6 @@
 @endpush
 
 @section('content')
-
-@php
-    if (isset($tiket) && !empty($tiket['pelayanan'])) {
-        $idLoket = $tiket['pelayanan']['departemen']['loket']['id'];
-        $allLokets = \App\Models\Loket::orderBy('id', 'ASC')->pluck('id')->toArray();
-        $loketIndex = array_search($idLoket, $allLokets);
-        $kodeHuruf = ($loketIndex !== false) ? chr(65 + $loketIndex) : '?';
-        $nomorUrut = $tiket['nomor_antrian'];
-        $nomorAntrianLengkap = $kodeHuruf . str_pad($nomorUrut, 3, '0', STR_PAD_LEFT);
-    } else {
-        $nomorAntrianLengkap = $tiket['nomor_antrian'] ?? 'N/A';
-    }
-@endphp
-
 <div class="page-container">
     @if(isset($tiket) && !empty($tiket['pengunjung']))
     <div class="detail-panel">
@@ -27,25 +13,25 @@
             <p>Pengadilan Negeri Banyuwangi</p>
         </div>
         <div class="panel-body">
-            <img src="{{ isset($tiket['pengunjung']['foto_wajah']) ? asset('storage/' . $tiket['pengunjung']['foto_wajah']) : asset('images/default-avatar.png') }}" alt="Foto Pengunjung" class="profile-photo">
+
+            {{-- 
+              [PERBAIKAN FINAL] 
+              Kita gunakan basename() untuk mengambil NAMA FILE SAJA.
+              Ini akan mengubah "wajah/foto.jpg" (dari DB) menjadi "foto.jpg".
+              Lalu kita gabungkan dengan "images/"
+            --}}
+            <img src="{{ isset($tiket['pengunjung']['foto_wajah']) ? asset('images/' . basename($tiket['pengunjung']['foto_wajah'])) : asset('images/default-avatar.png') }}" alt="Foto Pengunjung" class="profile-photo">
+
 
             <div class="queue-number-box">
                 <p>Nomor Antrian</p>
-                <span>{{ $nomorAntrianLengkap }}</span>
+                <span>{{ $tiket['nomor_antrian_lengkap'] }}</span>
             </div>
 
             <div class="info-grid">
+                {{-- (Sisa kode Anda sama persis, tidak perlu diubah) --}}
                 <div class="info-label">Nama</div>
                 <div class="info-value">{{ $tiket['pengunjung']['nama_pengunjung'] ?? 'N/A' }}</div>
-
-                {{-- Baris NIK dan No. HP disembunyikan menggunakan komentar Blade --}}
-                {{--
-                <div class="info-label">NIK</div>
-                <div class="info-value">{{ $tiket['pengunjung']['nik'] ?? 'N/A' }}</div>
-
-                <div class="info-label">No. HP</div>
-                <div class="info-value">{{ $tiket['pengunjung']['no_hp'] ?? 'N/A' }}</div>
-                --}}
 
                 <div class="info-label">Jenis Kelamin</div>
                 <div class="info-value">{{ $tiket['pengunjung']['jenis_kelamin'] ?? 'N/A' }}</div>
@@ -62,12 +48,13 @@
                 <div class="info-value">{{ $tiket['pelayanan']['departemen']['nama_departemen'] ?? 'N/A' }}</div>
 
                 <div class="info-label">Waktu Daftar</div>
-                <div class="info-value">{{ date('d M Y, H:i', strtotime($tiket['created_at'] ?? now())) }}</div>
+                <div class="info-value">{{ \Carbon\Carbon::parse($tiket['created_at'] ?? now())->translatedFormat('d M Y, H:i') }}</div>
             </div>
         </div>
     </div>
     @else
     <div class="detail-panel error-container">
+        {{-- (Sisa kode Anda sama persis, tidak perlu diubah) --}}
         <div class="panel-header">
             <h2>Data Tidak Ditemukan</h2>
         </div>

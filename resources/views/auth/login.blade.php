@@ -320,11 +320,9 @@
         </div>
     </div>
 
-    <!-- Font Awesome for icons -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Toggle password visibility
         document.addEventListener('DOMContentLoaded', function() {
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('password');
@@ -335,7 +333,6 @@
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                 passwordInput.setAttribute('type', type);
                 
-                // Change eye icon
                 if (type === 'password') {
                     this.innerHTML = '<i class="fas fa-eye"></i>';
                 } else {
@@ -343,7 +340,6 @@
                 }
             });
             
-            // Add animation to form elements
             const inputs = document.querySelectorAll('.form-control');
             inputs.forEach((input, index) => {
                 input.style.opacity = "0";
@@ -355,7 +351,6 @@
                 }, 300 + (index * 100));
             });
             
-            // Show loading when form is submitted
             loginForm.addEventListener('submit', function() {
                 loadingOverlay.style.display = 'flex';
             });

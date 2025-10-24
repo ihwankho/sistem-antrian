@@ -2,49 +2,49 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Antrian; // <--- TAMBAHKAN BARIS INI
+use App\Models\Antrian;
 use App\Models\Loket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use thiagoalessio\TesseractOCR\TesseractOCR;
-
-
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 class AntrianController extends Controller
 {
+    private $apiBaseUrl;
     private $apiAntrianUrl;
     private $apiPelayananUrl;
-    private $apiBaseUrl;
 
+    /**
+     * Menginisialisasi URL API dari file konfigurasi layanan.
+     */
     public function __construct()
     {
-        // Pastikan API_BASE_URL di file .env Anda diakhiri dengan /api
-        // Contoh: API_BASE_URL=http://127.0.0.1:8001/api
-        $this->apiBaseUrl = rtrim(env('API_BASE_URL', 'http://127.0.0.1:8001/api'), '/');
+        // --- PERUBAHAN DI SINI: Ambil dari config('services.api.base_url') ---
+        // Nilai default 'http://127.0.0.1:8001/api' di sini tidak lagi diperlukan
+        // karena sudah didefinisikan sebagai default di config/services.php
+        $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
+        // --------------------------------------------------------------------
+
         $this->apiAntrianUrl = $this->apiBaseUrl . '/antrian';
         $this->apiPelayananUrl = $this->apiBaseUrl . '/pelayanan';
     }
 
-    /**
-     * Menampilkan halaman untuk memilih layanan.
-     */
     public function pilihLayanan()
     {
-        $pelayananGrouped = [];
-
         try {
             $response = Http::get($this->apiPelayananUrl);
 
-            if ($response->successful() && ($response->json('status') === true)) {
+            if ($response->successful() && $response->json('status') === true) {
                 $pelayananList = $response->json('data');
-
-                // Kelompokkan berdasarkan nama departemen
+                $pelayananGrouped = [];
                 foreach ($pelayananList as $layanan) {
                     $departemen = $layanan['departemen']['nama_departemen'] ?? 'Layanan Lainnya';
                     $pelayananGrouped[$departemen][] = $layanan;
                 }
+                return view('antrian.pilih-layanan', compact('pelayananGrouped'));
             } else {
                 Log::error('Gagal mengambil data layanan dari API', ['response' => $response->body()]);
                 return back()->with('error', 'Gagal mengambil data layanan dari server.');
@@ -53,16 +53,10 @@ class AntrianController extends Controller
             Log::error('Tidak dapat terhubung ke API layanan', ['error' => $e->getMessage()]);
             return back()->with('error', 'Tidak dapat terhubung ke server layanan saat ini.');
         }
-
-        return view('antrian.pilih-layanan', compact('pelayananGrouped'));
     }
 
-    /**
-     * Menampilkan form pengisian data berdasarkan layanan yang dipilih.
-     */
     public function isiData(Request $request)
     {
-        // Jika request pakai id_departemen, ambil layanan pertama
         if ($request->has('id_departemen')) {
             try {
                 $response = Http::get($this->apiPelayananUrl);
@@ -72,20 +66,20 @@ class AntrianController extends Controller
                         ->firstWhere('departemen.id', (int) $request->id_departemen);
 
                     if ($layanan) {
+                        // Langsung lanjutkan ke validasi dengan id_pelayanan yang ditemukan
                         $request->merge(['id_pelayanan' => $layanan['id']]);
                     } else {
                         return redirect()->route('antrian.pilih-layanan')->with('error', 'Tidak ada layanan di departemen ini.');
                     }
+                } else {
+                     return redirect()->route('antrian.pilih-layanan')->with('error', 'Gagal memuat daftar layanan dari API.');
                 }
             } catch (\Exception $e) {
                 return redirect()->route('antrian.pilih-layanan')->with('error', 'Gagal terhubung ke server.');
             }
         }
 
-        // Validasi id_pelayanan
-        $request->validate([
-            'id_pelayanan' => 'required|numeric'
-        ]);
+        $request->validate(['id_pelayanan' => 'required|numeric']);
 
         try {
             $response = Http::get("{$this->apiPelayananUrl}/{$request->id_pelayanan}");
@@ -93,194 +87,178 @@ class AntrianController extends Controller
                 $layanan = $response->json('data');
                 return view('antrian.isi-data', compact('layanan'));
             }
-
-            return redirect()->route('antrian.pilih-layanan')->with('error', 'Layanan tidak ditemukan.');
+            return redirect()->route('antrian.pilih-layanan')->with('error', 'Layanan yang dipilih tidak ditemukan.');
         } catch (\Exception $e) {
             return redirect()->route('antrian.pilih-layanan')->with('error', 'Gagal terhubung ke server.');
         }
     }
 
-    /**
-     * Mengirim data ke API untuk membuat tiket antrian.
-     */
-    private function extractNikFromOcr(string $ocrText): ?string
-    {
-        // Regex ini mencari blok 16 digit angka yang berdiri sendiri
-        preg_match('/\b(\d{16})\b/', $ocrText, $matches);
+    public function buatTiket(Request $request)
+{
+    $request->merge([
+        'nama_pengunjung' => strip_tags($request->input('nama_pengunjung')),
+        'alamat'          => $request->filled('alamat') ? strip_tags($request->input('alamat')) : null,
+        'no_hp'           => strip_tags($request->input('no_hp')),
+    ]);
 
-        // Jika ditemukan, kembalikan NIK (hasil tangkapan pertama)
-        return $matches[1] ?? null;
+    // ✅ Validasi dasar (tanpa image|mimes)
+    $validator = Validator::make($request->all(), [
+        'nama_pengunjung' => 'required|string|max:255',
+        'no_hp'           => 'required|string|regex:/^[0-9]{10,13}$/',
+        'jenis_kelamin'   => 'nullable|string',
+        'alamat'          => 'nullable|string',
+        'id_pelayanan'    => 'required|numeric',
+        'foto_wajah'      => 'required|file|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return back()->withErrors($validator)->withInput();
     }
 
-    /**
-     * Membuat tiket antrian dengan validasi dan pengecekan duplikasi berdasarkan NIK.
-     */
-    public function buatTiket(Request $request)
-    {
-        // [UBAH] Menambahkan validasi untuk NIK (wajib 16 digit angka)
-        $validator = Validator::make($request->all(), [
-            'nik'             => 'required|digits:16',
-            'nama_pengunjung' => 'required|string|max:255',
-            'no_hp'           => 'required|string|max:15',
-            'jenis_kelamin'   => 'required|string',
-            'alamat'          => 'required|string',
-            'id_pelayanan'    => 'required|numeric',
-            'foto_ktp'        => 'required|image|max:2048',
-            'foto_wajah'      => 'required|image|max:2048',
+    // ✅ Validasi manual file gambar
+    if ($request->hasFile('foto_wajah')) {
+        $foto = $request->file('foto_wajah');
+        $allowedExt = ['jpg', 'jpeg', 'png'];
+        $ext = strtolower($foto->getClientOriginalExtension());
+
+        if (!in_array($ext, $allowedExt)) {
+            return back()->withErrors(['foto_wajah' => 'Ekstensi file tidak diizinkan. Hanya JPG atau PNG.'])->withInput();
+        }
+
+        if (!@getimagesize($foto->getRealPath())) {
+            return back()->withErrors(['foto_wajah' => 'File bukan gambar yang valid.'])->withInput();
+        }
+    }
+
+    try {
+        // ✅ Cek tiket aktif via API
+        $checkResponse = Http::get($this->apiAntrianUrl . '/check', [
+            'no_hp' => $request->input('no_hp'),
+            'id_pelayanan' => $request->input('id_pelayanan'),
         ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        if ($checkResponse->successful() && $checkResponse->json('status') === true) {
+            return back()->withErrors(['no_hp' => 'Nomor HP Anda sudah memiliki tiket aktif untuk layanan ini.'])->withInput();
         }
-
-        // --- Langkah 1: Cek tiket aktif berdasarkan NIK dan layanan ---
-        try {
-            // [UBAH] Mengirim NIK untuk pengecekan
-            $response = Http::get($this->apiAntrianUrl . '/check', [
-                'nik' => $request->input('nik'),
-                'id_pelayanan' => $request->input('id_pelayanan'),
-            ]);
-
-            if ($response->successful() && $response->json('status') === true) {
-                $existingTicket = $response->json('data');
-                $existingTicketStatus = $existingTicket['status'];
-
-                if ($existingTicketStatus == 1 || $existingTicketStatus == 2) {
-                    // [UBAH] Pesan error disesuaikan untuk NIK
-                    return back()->withErrors(['nik' => 'NIK Anda sudah memiliki tiket antrian yang masih aktif untuk layanan ini, anda bisa cek tiket anda di Cari Tiket.'])->withInput();
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('Gagal terhubung ke API saat pengecekan tiket', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Gagal terhubung ke server untuk verifikasi tiket. Silakan coba lagi.')->withInput();
-        }
-
-        // --- Langkah 2: Proses OCR untuk Validasi NIK ---
-        try {
-            $ktpPath = $request->file('foto_ktp')->getRealPath();
-            $ocrText = (new TesseractOCR($ktpPath))->lang('ind')->run();
-            // [UBAH] Memanggil fungsi untuk ekstraksi NIK
-            $nikDiKTP = $this->extractNikFromOcr($ocrText);
-
-            if (!$nikDiKTP) {
-                // [UBAH] Pesan error disesuaikan untuk NIK
-                return back()->withErrors(['nik' => 'NIK tidak dapat terdeteksi pada gambar KTP. Pastikan gambar jelas.'])->withInput();
-            }
-
-            // [UBAH] Membandingkan NIK dari input dengan NIK dari KTP
-            if (trim($nikDiKTP) !== trim($request->input('nik'))) {
-                 return back()->withErrors(['nik' => 'NIK yang dimasukkan tidak sesuai dengan NIK pada KTP. (Terdeteksi: ' . $nikDiKTP . ')'])->withInput();
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Tesseract OCR Gagal', ['error' => $e->getMessage()]);
-            return back()->withErrors(['foto_ktp' => 'Gagal memproses gambar KTP. Silakan coba lagi.'])->withInput();
-        }
-
-        // --- Langkah 3: Jika semua validasi lolos, buat tiket baru ---
-        try {
-            $validatedData = $validator->validated();
-            $postData = $validatedData;
-            // [HAPUS] Baris "$postData['nik'] = 0;" dihapus karena NIK sudah valid dari input
-            
-            $http = Http::asMultipart();
-            $fotoKtp = $request->file('foto_ktp');
-            $http->attach('foto_ktp', file_get_contents($fotoKtp->getRealPath()), $fotoKtp->getClientOriginalName());
-            $fotoWajah = $request->file('foto_wajah');
-            $http->attach('foto_wajah', file_get_contents($fotoWajah->getRealPath()), $fotoWajah->getClientOriginalName());
-
-            $response = $http->post($this->apiAntrianUrl, $postData);
-
-            if ($response->successful() && $response->json('status') === true) {
-                $tiketData = $response->json('data');
-                return redirect()->route('antrian.tiket', ['uuid' => $tiketData['uuid']]);
-            }
-
-            Log::error('API mengembalikan error saat membuat tiket', ['response' => $response->body()]);
-            return back()->withErrors($response->json('errors') ?? ['Terjadi kesalahan dari server API'])->withInput();
-
-        } catch (\Exception $e) {
-            Log::error('Gagal terhubung ke API saat buat tiket', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Gagal terhubung ke server. Silakan coba lagi nanti.')->withInput();
-        }
+    } catch (\Exception $e) {
+        Log::error('Gagal terhubung ke API saat pengecekan tiket', ['error' => $e->getMessage()]);
+        return back()->with('error', 'Gagal terhubung ke server untuk verifikasi tiket. Silakan coba lagi.')->withInput();
     }
 
-    
-/**
- * Menampilkan halaman tiket yang didapatkan oleh pengunjung.
- */
-public function tampilTiket($uuid) // Parameter adalah $uuid
-{
     try {
-        // === PERBAIKAN DI SINI ===
-        // Panggil API endpoint publik dengan variabel $uuid yang diterima
-        $response = Http::get($this->apiBaseUrl . '/tiket/' . $uuid);
-        
-        if ($response->successful()) {
-            $tiket = $response->json();
-            return view('antrian.tiket', compact('tiket'));
+        $validatedData = $validator->validated();
+        $http = Http::asMultipart();
+
+        if ($request->hasFile('foto_wajah')) {
+            $fotoWajah = $request->file('foto_wajah');
+            // ✅ attach file ke API
+            $http->attach('foto_wajah', file_get_contents($fotoWajah->getRealPath()), $fotoWajah->getClientOriginalName());
         }
-        
-        return view('antrian.tiket', ['tiket' => null]);
+
+        $response = $http->post($this->apiAntrianUrl, Arr::except($validatedData, ['foto_wajah']));
+
+        if ($response->successful() && $response->json('status') === true) {
+            $tiketData = $response->json('data');
+            return redirect()->route('antrian.tiket', ['uuid' => $tiketData['uuid']]);
+        }
+
+        Log::error('API mengembalikan error saat membuat tiket', [
+            'status' => $response->status(),
+            'body' => $response->body()
+        ]);
+
+        return back()->with('error', $response->json('message') ?? 'Terjadi kesalahan dari server API. Silakan coba lagi.')->withInput();
 
     } catch (\Exception $e) {
-        Log::error('Gagal terhubung ke API saat menampilkan tiket pengunjung', [
-            'uuid' => $uuid, // Log variabel yang benar
-            'error' => $e->getMessage()
-        ]);
-        return view('antrian.tiket', ['tiket' => null]);
+        Log::error('Gagal terhubung ke API saat buat tiket', ['error' => $e->getMessage()]);
+        return back()->with('error', 'Gagal terhubung ke server. Silakan coba lagi nanti.')->withInput();
     }
 }
 
-    /**
-     * Menampilkan halaman detail data diri berdasarkan ID tiket.
-     * Fungsi ini dipanggil ketika QR Code di-scan.
-     */
-    public function detailTiket($uuid) // <-- Menerima $uuid, bukan $id
-    {
-        try {
-            // Panggil API endpoint BARU yang menggunakan UUID
-            $response = Http::get($this->apiBaseUrl . '/antrian/detail/' . $uuid);
-            
-            if ($response->successful() && !empty($response->json())) {
-                $antrianDetail = $response->json();
-                return view('antrian.detail-tiket', ['tiket' => $antrianDetail]);
-            }
-            
-            return view('antrian.detail-tiket', ['tiket' => null]);
 
-        } catch (\Exception $e) {
-            Log::error('Gagal terhubung ke API saat detail tiket', ['uuid' => $uuid, 'error' => $e->getMessage()]);
-            return view('antrian.detail-tiket', ['tiket' => null]);
+    public function tampilTiket(string $uuid)
+    {
+        if (!Str::isUuid($uuid)) {
+            abort(404);
         }
+
+        // [DIUBAH] Mengambil data langsung dari database, bukan via HTTP call
+        $tiket = Antrian::with(['pelayanan.departemen.loket'])
+                        ->where('uuid', $uuid)
+                        ->first();
+
+        if ($tiket) {
+            // Ubah ke array agar konsisten dengan view yang sudah ada
+            $tiketArray = $tiket->toArray();
+
+            // Panggil helper untuk memformat nomor antrian
+            $tiketData = $this->_formatTiketData($tiketArray);
+
+            return view('antrian.tiket', ['tiket' => $tiketData]);
+        }
+
+        return view('antrian.tiket', ['tiket' => null]);
     }
+
+    public function detailTiket(string $uuid)
+    {
+        if (!Str::isUuid($uuid)) {
+            abort(404);
+        }
+
+        // [DIUBAH] Mengambil data langsung dari database, bukan via HTTP call
+        $tiket = Antrian::with(['pengunjung', 'pelayanan.departemen.loket'])
+                        ->where('uuid', $uuid)
+                        ->first();
+
+        if ($tiket) {
+            // Ubah ke array agar konsisten dengan view yang sudah ada
+            $tiketArray = $tiket->toArray();
+
+            // Panggil helper untuk memformat nomor antrian
+            $tiketData = $this->_formatTiketData($tiketArray);
+
+            return view('antrian.detail-tiket', ['tiket' => $tiketData]);
+        }
+
+        return view('antrian.detail-tiket', ['tiket' => null]);
+    }
+
+
+
     public function cariTiketJson(Request $request)
     {
-        $validated = $request->validate(['nik' => 'required|digits:16']);
-    
+        $validator = Validator::make($request->all(), [
+            'no_hp' => ['required', 'string', 'regex:/^[0-9]+$/']
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Format Nomor HP tidak valid.'], 400);
+        }
+
         try {
-            $antrians = Antrian::with(['pelayanan.departemen.loket'])
+            // Logika ini seharusnya memanggil API, bukan database lokal, agar konsisten
+            // Untuk saat ini, kita biarkan sesuai kode asli Anda
+            $antrians = Antrian::with(['pelayanan.departemen.loket', 'pengunjung'])
                 ->whereDate('created_at', now()->toDateString())
                 ->whereIn('status_antrian', [1, 2])
-                ->whereHas('pengunjung', function ($query) use ($validated) {
-                    $query->where('nik', $validated['nik']);
+                ->whereHas('pengunjung', function ($query) use ($request) {
+                    $query->where('no_hp', $request->no_hp);
                 })
                 ->get();
-    
+
             if ($antrians->isEmpty()) {
-                return response()->json(['success' => false, 'message' => 'Tidak ada tiket aktif yang ditemukan untuk NIK Anda hari ini.'], 404);
+                return response()->json(['success' => false, 'message' => 'Tidak ada tiket aktif yang ditemukan untuk Nomor HP Anda hari ini.'], 404);
             }
-    
-            // Ambil data loket sekali saja untuk efisiensi
+
             $all_lokets = Loket::orderBy('id', 'asc')->pluck('id')->toArray();
-    
-            // Format data tiket agar mudah digunakan oleh JavaScript
+
             $formattedTickets = $antrians->map(function ($antrian) use ($all_lokets) {
                 $loket_id = $antrian->pelayanan->departemen->id_loket;
                 $loket_index = array_search($loket_id, $all_lokets);
-                $kode_huruf = chr(65 + $loket_index);
+                $kode_huruf = ($loket_index !== false) ? chr(65 + $loket_index) : '?';
                 $nomor_lengkap = $kode_huruf . '-' . str_pad($antrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
-    
+
                 return [
                     'uuid' => $antrian->uuid,
                     'nomor_lengkap' => $nomor_lengkap,
@@ -289,12 +267,34 @@ public function tampilTiket($uuid) // Parameter adalah $uuid
                     'url' => route('antrian.tiket', ['uuid' => $antrian->uuid])
                 ];
             });
-    
+
             return response()->json(['success' => true, 'tickets' => $formattedTickets]);
-    
+
         } catch (\Exception $e) {
-            \Log::error('API Cari Tiket Error: ' . $e->getMessage());
+            Log::error('API Cari Tiket Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan pada server.'], 500);
         }
+    }
+
+    /**
+     * [BARU] Helper method privat untuk memformat data tiket.
+     * Menambahkan 'nomor_antrian_lengkap' ke dalam array tiket.
+     */
+    private function _formatTiketData(array $tiket): array
+    {
+        if (empty($tiket['pelayanan'])) {
+            $tiket['nomor_antrian_lengkap'] = $tiket['nomor_antrian'] ?? 'N/A';
+            return $tiket;
+        }
+
+        $allLokets = Loket::orderBy('id', 'ASC')->pluck('id')->toArray();
+        $idLoket = $tiket['pelayanan']['departemen']['loket']['id'] ?? null;
+
+        $loketIndex = $idLoket ? array_search($idLoket, $allLokets) : false;
+        $kodeHuruf = ($loketIndex !== false) ? chr(65 + $loketIndex) : '?';
+
+        $tiket['nomor_antrian_lengkap'] = $kodeHuruf . str_pad($tiket['nomor_antrian'], 3, '0', STR_PAD_LEFT);
+
+        return $tiket;
     }
 }

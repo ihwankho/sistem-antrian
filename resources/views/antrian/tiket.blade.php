@@ -1,7 +1,6 @@
 @extends('layouts.landing')
 
 @push('styles')
-    {{-- Memuat file CSS eksternal yang sudah dipisahkan --}}
     <link rel="stylesheet" href="{{ asset('css/tiket.css') }}">
 @endpush
 
@@ -51,45 +50,37 @@
 @endsection
 
 @push('scripts')
-{{-- JavaScript libraries --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-{{-- Custom page script --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ticketData = @json($tiket ?? null);
 
-        // Guard clause to stop execution if there's no ticket
-        if (!ticketData)return;
+        if (!ticketData) return;
 
         const qrContainerEl = document.getElementById('qrCodeContainer');
         const qrCodeUrl = "{{ route('antrian.tiket.detail', ['uuid' => $tiket['uuid'] ?? '']) }}";
         const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrCodeUrl)}`;
         
-        // Create an image element for the QR code
         const qrImage = new Image();
         qrImage.src = apiUrl;
         qrImage.alt = "QR Code";
         qrContainerEl.appendChild(qrImage);
     });
 
-    // Function to trigger the browser's print dialog
     function printTicket() {
         window.print();
     }
 
-    // Function to download the ticket element as a PNG image
     function downloadTicketAsImage() {
         const ticketElement = document.getElementById('ticketContainer');
         const nomorAntrian = ticketElement.querySelector('.ticket-number').textContent.trim();
 
-        // Use html2canvas to render the element to a canvas
         html2canvas(ticketElement, {
-            scale: 2, // Higher scale for better resolution
-            backgroundColor: '#f4f7f6', // Match the page background
-            useCORS: true // Important for external images if any
+            scale: 2,
+            backgroundColor: '#f4f7f6',
+            useCORS: true
         }).then(canvas => {
-            // Create a temporary link to trigger the download
             const link = document.createElement('a');
             link.download = `tiket-antrian-${nomorAntrian}.png`;
             link.href = canvas.toDataURL('image/png');

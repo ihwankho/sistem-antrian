@@ -6,138 +6,89 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Client\Pool; // Ditambahkan untuk performa
 
 class DepartemenWebController extends Controller
 {
-    private $apiUrl;
+    private $apiBaseUrl;
 
     public function __construct()
     {
-        $this->apiUrl = env('API_BASE_URL', 'http://127.0.0.1:8001') . '/api/departemen';
+        // --- PERUBAHAN DI SINI: Mengambil URL dasar dari config/services.php ---
+        $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
+        // --------------------------------------------------------------------
     }
 
     public function index()
     {
         try {
             $token = Session::get('token');
-            
-            // Mengambil data departemen dengan informasi loket
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen-loket');
-            $departemens = [];
-            
-            if ($departemenResponse->successful()) {
-                $responseData = $departemenResponse->json();
-                
-                // Debug struktur response
-                Log::info('Struktur response departemen-loket:', $responseData);
-                
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $departemens = $responseData['data'];
-                } elseif (is_array($responseData) && isset($responseData[0]['nama_departemen'])) {
-                    $departemens = $responseData;
-                }
-            } else {
-                Log::error('Gagal mengambil data departemen. Status: ' . $departemenResponse->status());
-                if ($departemenResponse->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
+
+            // [PERFORMA] Menjalankan dua panggilan API secara bersamaan
+            $responses = Http::pool(fn (Pool $pool) => [
+                $pool->withToken($token)->get($this->apiBaseUrl . '/departemen-loket'),
+                $pool->withToken($token)->get($this->apiBaseUrl . '/lokets'),
+            ]);
+
+            $departemenResponse = $responses[0];
+            $loketResponse = $responses[1];
+
+            // Handle jika sesi berakhir (unauthorized)
+            if ($departemenResponse->unauthorized() || $loketResponse->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
             }
 
-            // Mengambil data loket untuk dropdown (jika diperlukan)
-            $loketResponse = Http::withToken($token)->get('http://localhost:8001/api/lokets');
-            $lokets = [];
-            
-            if ($loketResponse->successful()) {
-                $responseData = $loketResponse->json();
-                if (isset($responseData['data'])) {
-                    $lokets = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $lokets = $responseData;
-                }
-            }
+            $departemens = $departemenResponse->successful() ? $departemenResponse->json('data', []) : [];
+            $lokets = $loketResponse->successful() ? $loketResponse->json('data', []) : [];
 
             return view('departemen.index', compact('departemens', 'lokets'));
+
         } catch (\Exception $e) {
-            Log::error('Exception dalam DepartemenWebController@index: ' . $e->getMessage());
-            return view('departemen.index', ['departemens' => [], 'lokets' => []])
-                ->with('error', 'Terjadi kesalahan saat mengambil data: ' . $e->getMessage());
+            Log::error('Exception di DepartemenWebController@index: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat memuat data departemen.');
         }
     }
 
     public function create()
     {
-        try {
-            $token = Session::get('token');
-            // Menggunakan hardcode URL untuk mengambil data loket
-            $loketResponse = Http::withToken($token)->get('http://localhost:8001/api/lokets');
-            $lokets = [];
-            
-            if ($loketResponse->successful()) {
-                $responseData = $loketResponse->json();
-                if (isset($responseData['data'])) {
-                    $lokets = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $lokets = $responseData;
-                }
-            } else {
-                if ($loketResponse->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
-                // Jika gagal mengambil loket, tetap tampilkan form dengan loket kosong
-                $lokets = [];
-            }
-            
-            return view('departemen.create', compact('lokets'));
-        } catch (\Exception $e) {
-            // Jika terjadi exception, tetap tampilkan form dengan loket kosong
-            $lokets = [];
-            return view('departemen.create', compact('lokets'))
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
+        $lokets = $this->_getLokets(Session::get('token'));
+        return view('departemen.create', compact('lokets'));
     }
 
     public function store(Request $request)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge(['nama_departemen' => strip_tags($request->input('nama_departemen'))]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_departemen' => 'required|string|max:255',
+            'id_loket'        => 'required|numeric|exists:lokets,id',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            
-            // Debug data yang dikirim
-            Log::info('Data yang dikirim ke API:', $request->all());
-            
-            $response = Http::withToken($token)->post('http://localhost:8001/api/departemen', [
-                'nama_departemen' => $request->nama_departemen,
-                'id_loket' => $request->id_loket
-            ]);
-            
-            // Debug response dari API
-            Log::info('Response dari API:', [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-            
-            if ($response->successful()) {
-                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil ditambahkan');
-            }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
+            $response = Http::withToken($token)->post($this->apiBaseUrl . '/departemen', $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
                 return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
             }
-            
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Terjadi kesalahan';
-            
-            // Jika ada error validasi, tampilkan pesan error
-            if (isset($errorData['errors'])) {
-                return back()->withErrors($errorData['errors'])->withInput();
+
+            if ($response->successful()) {
+                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil ditambahkan.');
             }
-            
-            return back()->with('error', $errorMessage)->withInput();
+
+            return back()->with('error', $response->json('message', 'Gagal menambahkan departemen.'))->withInput();
+
         } catch (\Exception $e) {
-            Log::error('Exception dalam DepartemenWebController@store: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
+            Log::error('Exception di DepartemenWebController@store: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -145,70 +96,60 @@ class DepartemenWebController extends Controller
     {
         try {
             $token = Session::get('token');
-            $response = Http::withToken($token)->get("http://localhost:8001/api/departemen/{$id}");
-            $loketResponse = Http::withToken($token)->get('http://localhost:8001/api/lokets');
+            $response = Http::withToken($token)->get($this->apiBaseUrl . "/departemen/{$id}");
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
 
             if ($response->failed()) {
                 return redirect()->route('departemen.index')->with('error', 'Departemen tidak ditemukan.');
             }
 
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
+            $departemen = $response->json('data', []);
+            $lokets = $this->_getLokets($token);
 
-            $responseData = $response->json();
-            $departemen = [];
-            if (isset($responseData['data'])) {
-                $departemen = $responseData['data'];
-            } elseif (is_array($responseData)) {
-                $departemen = $responseData;
-            }
-            
-            $lokets = [];
-            if ($loketResponse->successful()) {
-                $loketData = $loketResponse->json();
-                if (isset($loketData['data'])) {
-                    $lokets = $loketData['data'];
-                } elseif (is_array($loketData)) {
-                    $lokets = $loketData;
-                }
-            } else {
-                if ($loketResponse->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
-            }
-            
             return view('departemen.edit', compact('departemen', 'lokets'));
+
         } catch (\Exception $e) {
-            return redirect()->route('departemen.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di DepartemenWebController@edit: ' . $e->getMessage());
+            return redirect()->route('departemen.index')->with('error', 'Terjadi kesalahan pada server.');
         }
     }
 
     public function update(Request $request, $id)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge(['nama_departemen' => strip_tags($request->input('nama_departemen'))]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_departemen' => 'required|string|max:255',
+            'id_loket'        => 'required|numeric|exists:lokets,id',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            $response = Http::withToken($token)->put("http://localhost:8001/api/departemen/{$id}", $request->all());
-            
-            if ($response->successful()) {
-                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil diperbarui');
-            }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
+            $response = Http::withToken($token)->put($this->apiBaseUrl . "/departemen/{$id}", $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
                 return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
             }
-            
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Gagal update';
-            $errors = isset($errorData['errors']) ? $errorData['errors'] : [$errorMessage];
-            
-            return back()->withErrors($errors)->withInput();
+
+            if ($response->successful()) {
+                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil diperbarui.');
+            }
+
+            return back()->with('error', $response->json('message', 'Gagal memperbarui departemen.'))->withInput();
+
         } catch (\Exception $e) {
-            return back()->withErrors(['Terjadi kesalahan: ' . $e->getMessage()])->withInput();
+            Log::error('Exception di DepartemenWebController@update: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -216,21 +157,45 @@ class DepartemenWebController extends Controller
     {
         try {
             $token = Session::get('token');
-            $response = Http::withToken($token)->delete("http://localhost:8001/api/departemen/{$id}");
-            
-            if ($response->successful()) {
-                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil dihapus');
-            }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
+            $response = Http::withToken($token)->delete($this->apiBaseUrl . "/departemen/{$id}");
+
+            if ($response->unauthorized()) {
+                Session::flush();
                 return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
             }
-            
+
+            if ($response->successful()) {
+                return redirect()->route('departemen.index')->with('success', 'Departemen berhasil dihapus.');
+            }
+
             return redirect()->route('departemen.index')->with('error', 'Gagal menghapus departemen.');
+
         } catch (\Exception $e) {
-            return redirect()->route('departemen.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di DepartemenWebController@destroy: ' . $e->getMessage());
+            return redirect()->route('departemen.index')->with('error', 'Terjadi kesalahan pada server.');
         }
+    }
+
+    /**
+     * [DRY] Helper method privat untuk mengambil data loket.
+     * * @param string|null $token Token otorisasi.
+     * @return array
+     */
+    private function _getLokets(?string $token): array
+    {
+        if (!$token) {
+            return [];
+        }
+
+        try {
+            $response = Http::withToken($token)->get($this->apiBaseUrl . '/lokets');
+            if ($response->successful()) {
+                return $response->json('data', []);
+            }
+        } catch (\Exception $e) {
+            Log::error('Gagal mengambil data loket: ' . $e->getMessage());
+        }
+
+        return [];
     }
 }

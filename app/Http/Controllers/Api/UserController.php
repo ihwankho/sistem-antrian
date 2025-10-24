@@ -7,7 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
+// use Illuminate\Support\Facades\Storage; // Tidak lagi digunakan
+use Illuminate\Support\Str; // Ditambahkan
 use Exception;
 
 class UserController extends Controller
@@ -16,6 +17,11 @@ class UserController extends Controller
     {
         try {
             $users = User::all();
+
+            // [PERBAIKAN] Tambahkan URL lengkap untuk foto
+            $users->each(function($user) {
+                $user->foto_url = $user->foto ? asset($user->foto) : null;
+            });
 
             return response()->json([
                 'status' => true,
@@ -30,15 +36,19 @@ class UserController extends Controller
             ], 500);
         }
     }
+    
     public function show($id)
     {
         try {
-            $users = User::findOrFail($id);
+            $user = User::findOrFail($id); // [FIX] Ganti nama variabel $users ke $user
+
+            // [PERBAIKAN] Tambahkan URL lengkap untuk foto
+            $user->foto_url = $user->foto ? asset($user->foto) : null;
 
             return response()->json([
                 'status' => true,
                 'message' => 'Data pengguna berhasil diambil',
-                'data' => $users
+                'data' => $user // [FIX] Kembalikan $user
             ], 200);
         } catch (Exception $e) {
             return response()->json([
@@ -53,13 +63,14 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
+            // [PERBAIKAN] Hapus validasi 'image' & 'mimes' untuk manual check
             $validator = Validator::make($request->all(), [
                 'nama'           => 'required|string|max:255',
                 'nama_pengguna'  => 'required|string|max:255|unique:users,nama_pengguna',
                 'password'       => 'required|string|min:6',
                 'role'           => 'required|in:1,2',
                 'id_loket'       => 'nullable|exists:lokets,id',
-                'foto'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'foto'           => 'nullable|file|max:2048', // Hanya validasi file & ukuran
             ]);
 
             if ($validator->fails()) {
@@ -70,10 +81,26 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Simpan foto jika ada
             $fotoPath = null;
             if ($request->hasFile('foto')) {
-                $fotoPath = $request->file('foto')->store('user_foto', 'public');
+                $foto = $request->file('foto');
+                
+                // Validasi manual ekstensi
+                $allowedExt = ['jpg', 'jpeg', 'png'];
+                $ext = strtolower($foto->getClientOriginalExtension());
+                if (!in_array($ext, $allowedExt)) {
+                     throw new \Exception('Ekstensi file tidak diizinkan. Hanya JPG atau PNG.');
+                }
+                // Validasi manual tipe gambar
+                if (!@getimagesize($foto->getRealPath())) {
+                    throw new \Exception('File yang diunggah bukan gambar yang valid.');
+                }
+                
+                // [PERBAIKAN] Simpan ke public/images/user_foto
+                $folder = 'images/user_foto';
+                $filename = 'user_' . time() . '_' . Str::random(5) . '.' . $ext;
+                $foto->move(public_path($folder), $filename);
+                $fotoPath = $folder . '/' . $filename; // Path untuk DB: images/user_foto/file.jpg
             }
 
             $user = User::create([
@@ -94,7 +121,8 @@ class UserController extends Controller
                     'nama_pengguna' => $user->nama_pengguna,
                     'role' => $user->role,
                     'id_loket' => $user->id_loket,
-                    'foto' => $user->foto ? asset('storage/' . $user->foto) : null,
+                    // [PERBAIKAN] Gunakan asset() tanpa 'storage/'
+                    'foto' => $user->foto ? asset($user->foto) : null,
                 ]
             ], 201);
         } catch (Exception $e) {
@@ -111,13 +139,14 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
 
+            // [PERBAIKAN] Hapus validasi 'image' & 'mimes' untuk manual check
             $validator = Validator::make($request->all(), [
                 'nama'           => 'sometimes|required|string|max:255',
                 'nama_pengguna'  => 'sometimes|required|string|max:255|unique:users,nama_pengguna,' . $user->id,
                 'password'       => 'nullable|string|min:6',
                 'role'           => 'sometimes|required|in:1,2',
                 'id_loket'       => 'sometimes|required|exists:lokets,id',
-                'foto'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'foto'           => 'nullable|file|max:2048', // Hanya validasi file & ukuran
             ]);
 
             if ($validator->fails()) {
@@ -135,14 +164,31 @@ class UserController extends Controller
             $user->role = $request->input('role', $user->role);
             $user->id_loket = $request->input('id_loket', $user->id_loket);
 
-
             // Update foto jika ada
             if ($request->hasFile('foto')) {
-                // hapus foto lama jika ada
-                if ($user->foto) {
-                    Storage::disk('public')->delete($user->foto);
+                $foto = $request->file('foto');
+                
+                // Validasi manual ekstensi
+                $allowedExt = ['jpg', 'jpeg', 'png'];
+                $ext = strtolower($foto->getClientOriginalExtension());
+                if (!in_array($ext, $allowedExt)) {
+                     throw new \Exception('Ekstensi file tidak diizinkan. Hanya JPG atau PNG.');
                 }
-                $user->foto = $request->file('foto')->store('user_foto', 'public');
+                // Validasi manual tipe gambar
+                if (!@getimagesize($foto->getRealPath())) {
+                    throw new \Exception('File yang diunggah bukan gambar yang valid.');
+                }
+
+                // [PERBAIKAN] Hapus foto lama dari public path
+                if ($user->foto && file_exists(public_path($user->foto))) {
+                    @unlink(public_path($user->foto));
+                }
+                
+                // [PERBAIKAN] Simpan foto baru ke public/images/user_foto
+                $folder = 'images/user_foto';
+                $filename = 'user_' . time() . '_' . Str::random(5) . '.' . $ext;
+                $foto->move(public_path($folder), $filename);
+                $user->foto = $folder . '/' . $filename; // Path untuk DB
             }
 
             $user->save();
@@ -156,7 +202,8 @@ class UserController extends Controller
                     'nama_pengguna' => $user->nama_pengguna,
                     'role' => $user->role,
                     'id_loket' => $user->id_loket,
-                    'foto' => $user->foto ? asset('storage/' . $user->foto) : null,
+                    // [PERBAIKAN] Gunakan asset() tanpa 'storage/'
+                    'foto' => $user->foto ? asset($user->foto) : null,
                 ]
             ], 200);
         } catch (Exception $e) {
@@ -174,6 +221,12 @@ class UserController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+            
+            // [PERBAIKAN] Hapus file foto dari public path
+            if ($user->foto && file_exists(public_path($user->foto))) {
+                @unlink(public_path($user->foto));
+            }
+            
             $user->delete();
 
             return response()->json([
@@ -198,6 +251,7 @@ class UserController extends Controller
                     $query->select('departemens.id as departemen_id', 'departemens.nama_departemen', 'departemens.id_loket');
                 }
             ])->get();
+            
             $data = $users->map(function ($user) {
                 return [
                     'id' => $user->id,
@@ -206,7 +260,8 @@ class UserController extends Controller
                     'role' => $user->role,
                     'nama_loket' => $user->loket->nama_loket ?? null,
                     'nama_departemen' => $user->departemen->nama_departemen ?? null,
-                    'foto' => $user->foto ? asset('storage/' . $user->foto) : null,
+                    // [PERBAIKAN] Gunakan asset() tanpa 'storage/'
+                    'foto' => $user->foto ? asset($user->foto) : null,
                 ];
             });
 

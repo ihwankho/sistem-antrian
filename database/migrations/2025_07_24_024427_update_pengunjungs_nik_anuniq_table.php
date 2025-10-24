@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pengunjungs', function (Blueprint $table) {
-            $table->dropUnique(['nik']); // hapus unique index pada kolom nik
+            // [TETAP] Baris ini menghapus aturan unik dari kolom 'nik'.
+            $table->dropUnique(['nik']);
+            
+            // [BARU] Baris ini menambahkan aturan unik ke kolom 'no_hp'.
+            $table->unique('no_hp');
         });
     }
 
@@ -22,7 +26,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('pengunjungs', function (Blueprint $table) {
-            $table->unique('nik'); // kalau di-rollback, tambahkan lagi unique
+            // [TETAP] Mengembalikan aturan unik ke 'nik' jika migrasi dibatalkan.
+            $table->unique('nik');
+            
+            // [BARU] Menghapus aturan unik dari 'no_hp' jika migrasi dibatalkan.
+            $table->dropUnique(['no_hp']);
         });
     }
 };

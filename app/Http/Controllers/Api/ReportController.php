@@ -8,22 +8,21 @@ use App\Models\Antrian;
 use App\Models\Loket;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth; // <-- PASTIKAN BARIS INI ADA
+// use Illuminate\Support\Facades\Storage; // Tidak diperlukan
+use Illuminate\Support\Facades\Auth; 
 
 
 class ReportController extends Controller
 {
     /**
      * Mengambil ringkasan dan daftar aktivitas antrian untuk laporan.
-     * Versi final yang aman dan memiliki format respons yang benar.
      */
     public function getActivityHistory(Request $request)
     {
         try {
             $query = \App\Models\Antrian::with(['pengunjung', 'pelayanan.departemen.loket']);
     
-            // Filter tanggal (berlaku untuk semua)
+            // Filter tanggal
             if ($request->filled('start_date') && $request->filled('end_date')) {
                 $startDate = \Carbon\Carbon::parse($request->start_date)->startOfDay();
                 $endDate = \Carbon\Carbon::parse($request->end_date)->endOfDay();
@@ -32,43 +31,38 @@ class ReportController extends Controller
                 $query->whereBetween('created_at', [today()->startOfDay(), today()->endOfDay()]);
             }
     
-            // ==============================================================
-            // == [DIKEMBALIKAN] Filter berdasarkan Role Pengguna ==
-            // ==============================================================
+            // Filter Role
             $user = Auth::user();
-    
-            // Jika pengguna adalah PETUGAS LOKET (role 2)
             if ($user && $user->role === 2) {
                 $loketId = $user->id_loket;
                 if ($loketId) {
-                    // Terapkan filter: hanya tampilkan data dari loket milik petugas
                     $query->whereHas('pelayanan.departemen', function ($q) use ($loketId) {
                         $q->where('id_loket', $loketId);
                     });
                 } else {
-                    // Jika petugas tidak terhubung ke loket manapun, kembalikan data kosong
                     $summaryKosong = ['total'=>0, 'menunggu'=>0, 'dipanggil'=>0, 'selesai'=>0, 'dilewati'=>0, 'estimasi_waktu'=>0];
                     return response()->json(['summary' => $summaryKosong, 'data' => []]);
                 }
             }
-            // Jika pengguna adalah ADMIN (role 1), filter departemen opsional berlaku
             else if ($user && $user->role === 1) {
                 if ($request->filled('department_id')) {
-                    $query->whereHas('pelayanan.departemen', fn ($q) => $q->where('id', $request->department_id));
+                    // Membersihkan input (menghapus ':')
+                    $deptId = str_replace(':', '', $request->department_id);
+                    if (is_numeric($deptId)) {
+                         $query->whereHas('pelayanan.departemen', fn ($q) => $q->where('id', $deptId));
+                    }
                 }
             }
-            // ==============================================================
     
-            // Filter status (berlaku untuk semua)
+            // Filter status
             if ($request->filled('status')) {
                 $query->where('status_antrian', (int)$request->status);
             }
     
-            // Eksekusi query dan sisa kode lainnya...
             $results = $query->orderBy('created_at', 'desc')->get();
-            // ... (sisa fungsi Anda dari sini ke bawah tidak perlu diubah, biarkan sama persis) ...
             $allLokets = \App\Models\Loket::orderBy('id', 'ASC')->pluck('id')->toArray();
     
+            // Logika Summary
             $totalSelesai = $results->where('status_antrian', 3)->count();
             $waktuPenyelesaian = 0;
             if ($totalSelesai > 0) {
@@ -94,8 +88,16 @@ class ReportController extends Controller
             $formattedResults = $results->map(function ($item) use ($allLokets) {
                 $pengunjung = $item->pengunjung;
                 if ($pengunjung) {
-                    $pengunjung->foto_ktp_url = $pengunjung->foto_ktp ? \Illuminate\Support\Facades\Storage::url($pengunjung->foto_ktp) : null;
-                    $pengunjung->foto_wajah_url = $pengunjung->foto_wajah ? \Illuminate\Support\Facades\Storage::url($pengunjung->foto_wajah) : null;
+                    
+                    // --- [PERUBAHAN DI SINI] ---
+                    // Menggunakan asset() untuk menunjuk ke 'public/images/...'
+                    // basename() digunakan untuk keamanan, mengambil nama file saja
+                    // Ini akan mengubah 'images/foto.jpg' atau 'wajah/foto.jpg' (data lama) menjadi 'foto.jpg'
+                    // lalu digabung dengan 'images/'
+                    $pengunjung->foto_ktp_url = $pengunjung->foto_ktp ? asset('images/' . basename($pengunjung->foto_ktp)) : null;
+                    $pengunjung->foto_wajah_url = $pengunjung->foto_wajah ? asset('images/' . basename($pengunjung->foto_wajah)) : null;
+                    // --- [AKHIR PERUBAHAN] ---
+
                 }
                 $statusMap = [1 => 'Menunggu', 2 => 'Dipanggil', 3 => 'Selesai', 4 => 'Dilewati'];
                 $nama_pengunjung = optional($pengunjung)->nama_pengunjung ?? 'Data Hilang';

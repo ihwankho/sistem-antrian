@@ -166,8 +166,7 @@
         <dl class="row">
             <dt class="col-sm-4">Nama</dt>
             <dd class="col-sm-8" id="detailNama"></dd>
-            <dt class="col-sm-4">NIK</dt>
-            <dd class="col-sm-8" id="detailNik"></dd>
+            
             <dt class="col-sm-4">No. HP</dt>
             <dd class="col-sm-8" id="detailHp"></dd>
             <dt class="col-sm-4">Jenis Kelamin</dt>
@@ -178,13 +177,7 @@
         <hr>
         {{-- Bagian untuk menampilkan foto --}}
         <div class="row mt-3">
-            <div class="col-md-6 text-center mb-3">
-                <strong>Foto KTP</strong>
-                <div id="containerFotoKtp" class="mt-2">
-                    {{-- Konten diisi oleh JavaScript --}}
-                </div>
-            </div>
-            <div class="col-md-6 text-center mb-3">
+            <div class="col-md-12 text-center mb-3">
                 <strong>Foto Wajah</strong>
                 <div id="containerFotoWajah" class="mt-2">
                     {{-- Konten diisi oleh JavaScript --}}
@@ -216,10 +209,16 @@
     });
 
     function fetchReportData() {
-        const formData = $('#filterForm').serialize();
-        const apiUrl = `/api/reports/activity-history?${formData}`;
-
-        const exportUrl = `{{ route('reports.activity.export') }}?${formData}`;
+        // Membersihkan department_id dari karakter ':'
+        let formData = new URLSearchParams($('#filterForm').serialize());
+        let deptId = formData.get('department_id');
+        if (deptId) {
+            formData.set('department_id', deptId.replace(/[^0-9]/g, ''));
+        }
+        
+        const formDataString = formData.toString();
+        const apiUrl = `/api/reports/activity-history?${formDataString}`;
+        const exportUrl = `{{ route('reports.activity.export') }}?${formDataString}`;
         $('#exportButton').attr('href', exportUrl);
 
         $.ajax({
@@ -293,36 +292,23 @@
         });
     }
 
+    // Fungsi ini SUDAH BENAR. Ia mengambil `visitor.foto_wajah_url`
+    // yang sudah disiapkan oleh Api/ReportController.php
     function showVisitorDetails(visitor) {
         if (!visitor) return;
         
         $('#detailNama').text(visitor.nama_pengunjung || '-');
-        $('#detailNik').text(visitor.nik || '-');
         $('#detailHp').text(visitor.no_hp || '-');
         $('#detailJk').text(visitor.jenis_kelamin || '-');
         $('#detailAlamat').text(visitor.alamat || '-');
 
-        const ktpContainer = $('#containerFotoKtp');
         const wajahContainer = $('#containerFotoWajah');
         const placeholder = 'https://via.placeholder.com/200x120.png?text=Tidak+Ada+Foto';
-
-        if (visitor.foto_ktp_url) {
-            ktpContainer.html(`
-                <a href="${visitor.foto_ktp_url}" target="_blank" title="Lihat ukuran penuh">
-                    <img src="${visitor.foto_ktp_url}" class="img-thumbnail" style="max-height: 120px;" alt="Foto KTP">
-                </a>
-                <a href="${visitor.foto_ktp_url}" class="btn btn-sm btn-primary mt-2" download>
-                    <i class="material-icons align-middle fs-6">download</i> Unduh
-                </a>
-            `);
-        } else {
-            ktpContainer.html(`<img src="${placeholder}" class="img-thumbnail" alt="Tidak ada foto KTP">`);
-        }
 
         if (visitor.foto_wajah_url) {
             wajahContainer.html(`
                 <a href="${visitor.foto_wajah_url}" target="_blank" title="Lihat ukuran penuh">
-                    <img src="${visitor.foto_wajah_url}" class="img-thumbnail" style="max-height: 120px;" alt="Foto Wajah">
+                    <img src="${visitor.foto_wajah_url}" class="img-thumbnail" style="max-height: 150px;" alt="Foto Wajah">
                 </a>
                 <a href="${visitor.foto_wajah_url}" class="btn btn-sm btn-primary mt-2" download>
                     <i class="material-icons align-middle fs-6">download</i> Unduh

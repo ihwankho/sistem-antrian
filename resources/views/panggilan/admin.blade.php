@@ -187,7 +187,8 @@ $(document).ready(function() {
     });
 
     // Fungsi AJAX generik untuk tombol aksi
-    function handleActionButton(button, url, data, successMessage, callback) {
+    // Ditambahkan parameter 'playSound' untuk mengontrol suara
+    function handleActionButton(button, url, data, successMessage, playSound, callback) {
         button.prop('disabled', true).html('<i class="material-icons align-middle">hourglass_top</i> Memproses...');
         
         $.ajax({
@@ -197,13 +198,18 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status) {
                     toastr.success(successMessage + (response.data.kode_antrian ? ': ' + response.data.kode_antrian : ''));
-                    if (response.data && response.data.voice_text) {
+                    
+                    // Suara hanya akan diputar jika playSound adalah true
+                    if (playSound && response.data && response.data.voice_text) {
                         setTimeout(() => speakText(response.data.voice_text), 500);
                     }
+                    
                     if (callback) {
                         callback(response);
                     } else {
-                        setTimeout(() => location.reload(), 1500);
+                        // Diberi jeda sedikit lebih lama jika ada suara, jika tidak bisa lebih cepat
+                        const reloadDelay = playSound ? 2000 : 1000;
+                        setTimeout(() => location.reload(), reloadDelay);
                     }
                 } else {
                     toastr.error('Gagal: ' + response.message);
@@ -229,14 +235,16 @@ $(document).ready(function() {
     // Event listener untuk tombol-tombol
     $('.btn-next').click(function() {
         const loketId = $(this).data('loket-id');
-        handleActionButton($(this), "{{ route('panggilan.admin.next') }}", { id_loket: loketId }, 'Antrian berhasil dipanggil', () => {
-             setTimeout(() => location.reload(), 2000);
+        // Panggil handleActionButton dengan playSound = false
+        handleActionButton($(this), "{{ route('panggilan.admin.next') }}", { id_loket: loketId }, 'Antrian berhasil dipanggil', false, () => {
+             setTimeout(() => location.reload(), 1000); // Reload lebih cepat karena tidak menunggu suara
         });
     });
 
     $('.btn-recall-main').click(function() {
         const loketId = $(this).data('loket-id');
-        handleActionButton($(this), "{{ route('panggilan.admin.recall') }}", { id_loket: loketId }, 'Recall berhasil', (response) => {
+        // Panggil handleActionButton dengan playSound = false
+        handleActionButton($(this), "{{ route('panggilan.admin.recall') }}", { id_loket: loketId }, 'Recall berhasil', false, (response) => {
             // Setelah selesai, kembalikan tombol ke state semula
             $(this).prop('disabled', false).html($(this).data('original-html'));
         });
@@ -244,19 +252,22 @@ $(document).ready(function() {
 
     $('.btn-recall-table').click(function() {
         const loketId = $(this).data('loket-id');
-        handleActionButton($(this), "{{ route('panggilan.admin.recall') }}", { id_loket: loketId }, 'Recall berhasil', (response) => {
+        // Panggil handleActionButton dengan playSound = false
+        handleActionButton($(this), "{{ route('panggilan.admin.recall') }}", { id_loket: loketId }, 'Recall berhasil', false, (response) => {
             $(this).prop('disabled', false).html($(this).data('original-html'));
         });
     });
 
     $('.btn-finish').click(function() {
         const antrianId = $(this).data('antrian-id');
-        handleActionButton($(this), "{{ route('panggilan.admin.finish') }}", { id_antrian: antrianId }, 'Antrian berhasil diselesaikan');
+        // Panggil handleActionButton dengan playSound = false (atau true jika ingin tetap ada suara)
+        handleActionButton($(this), "{{ route('panggilan.admin.finish') }}", { id_antrian: antrianId }, 'Antrian berhasil diselesaikan', false);
     });
 
     $('.btn-skip').click(function() {
         const antrianId = $(this).data('antrian-id');
-        handleActionButton($(this), "{{ route('panggilan.admin.skip') }}", { id_antrian: antrianId }, 'Antrian berhasil dilewati');
+        // Panggil handleActionButton dengan playSound = false (atau true jika ingin tetap ada suara)
+        handleActionButton($(this), "{{ route('panggilan.admin.skip') }}", { id_antrian: antrianId }, 'Antrian berhasil dilewati', false);
     });
 });
 </script>

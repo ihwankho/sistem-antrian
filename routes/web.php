@@ -179,3 +179,26 @@ Route::fallback(function () {
     }
     return redirect('/login')->with('error', 'Halaman tidak ditemukan.');
 });
+// Tambahkan ini di paling bawah routes/web.php
+Route::get('/tes-koneksi-api', function () {
+    try {
+        $apiUrl = env('API_BASE_URL', 'http://127.0.0.1:8001/api');
+        echo "<h3>Mencoba menghubungi alamat API: " . $apiUrl . "/pelayanan</h3>";
+
+        $response = Illuminate\Support\Facades\Http::timeout(5)->get($apiUrl . '/pelayanan');
+
+        echo "<h1>✔️ KONEKSI BERHASIL!</h1>";
+        echo "<p>Aplikasi Web Anda BISA terhubung ke Server API.</p>";
+        echo "<p>Status Code dari API: " . $response->status() . "</p>";
+        echo "<strong>Response Body dari API:</strong><pre>";
+        print_r($response->json());
+        echo "</pre>";
+
+    } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        echo "<h1>❌ KONEKSI GAGAL!</h1>";
+        echo "<p>Ini membuktikan bahwa Aplikasi Web Anda (yang berjalan di port 8000) TIDAK BISA 'melihat' atau terhubung ke Server API Anda (yang berjalan di port 8001).</p>";
+        echo "<p>Ini BUKAN masalah kode simpan data, tetapi murni masalah JARINGAN atau ENVIRONMENT.</p>";
+        echo "<hr>";
+        echo "<p><strong>Detail Error Teknis:</strong> " . $e->getMessage() . "</p>";
+    }
+});
