@@ -5,13 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Http\Client\Response;
 
 class LoginWebController extends Controller
 {
+    private $apiBaseUrl;
+
+    public function __construct()
+    {
+        // --- PERUBAHAN DI SINI: Mengambil URL dasar dari config/services.php ---
+        $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
+        // --------------------------------------------------------------------
+    }
+
     public function showLogin()
     {
         return view('auth.login');
@@ -20,159 +28,136 @@ class LoginWebController extends Controller
     public function login(Request $request)
     {
         try {
-            // Validasi input
-            $request->validate([
-                'nama_pengguna' => 'required|string',
-                'password' => 'required|string',
+            // [KEAMANAN] Sanitasi input nama pengguna untuk mencegah XSS
+            $request->merge(['nama_pengguna' => strip_tags($request->input('nama_pengguna'))]);
+
+            $credentials = $request->validate([
+                'nama_pengguna' => 'required|string|max:255',
+                'password'      => 'required|string',
             ]);
 
-            Log::info('Attempting login for user: ' . $request->nama_pengguna);
+            // Panggil API untuk otentikasi
+            $response = $this->_authenticateWithApi($credentials);
 
-            // Coba login lokal terlebih dahulu
-            $user = User::where('nama_pengguna', $request->nama_pengguna)->first();
-
-            
-            // if ($user && Hash::check($request->password, $user->password)) {
-            //     Auth::login($user);
-            //     Log::info('Local login successful for user: ' . $request->nama_pengguna);
-            //     // Redirect berdasarkan role
-            //     return $this->redirectBasedOnRole($user);
-            // }
-
-            // Jika login lokal gagal, coba login via API
-            $apiBaseUrl = env('API_BASE_URL');
-            if (!$apiBaseUrl) {
-                Log::error('API_BASE_URL not configured');
-                return back()->with('error', 'Konfigurasi API tidak ditemukan. Silakan hubungi administrator.');
+            if ($response->failed()) {
+                return $this->_handleApiError($response);
             }
 
-            Log::info('Trying API login for user: ' . $request->nama_pengguna);
+            $apiData = $response->json('data');
 
-            $response = Http::timeout(30)
-                ->acceptJson()
-                ->contentType('application/json')
-                ->post($apiBaseUrl . '/login', [
-                    'nama_pengguna' => $request->nama_pengguna,
-                    'password' => $request->password,
-                ]);
+            // Buat atau perbarui pengguna di database lokal
+            $localUser = $this->_syncLocalUser($apiData, $credentials['password']);
 
-            Log::info('API Response Status: ' . $response->status());
-            Log::info('API Response Body: ' . $response->body());
+            // Login ke sesi web Laravel
+            Auth::login($localUser);
+            session(['token' => $apiData['token'] ?? null]);
 
+            Log::info('Login successful and user synced for: ' . $localUser->nama_pengguna);
 
-            if ($response->successful()) {
-                $responseData = $response->json();
-                
-                if (isset($responseData['status']) && $responseData['status'] === true) {
-                    $data = $responseData['data'];
+            return $this->redirectBasedOnRole($localUser);
 
-                    // Cek atau buat user lokal
-                    $localUser = User::find($data['id']);
-                    if (!$localUser) {
-                        $localUser = User::create([
-                            'id' => $data['id'],
-                            'nama' => $data['nama'],
-                            'nama_pengguna' => $data['nama_pengguna'],
-                            'role' => (int)$data['role'],
-                            'id_loket' => $data['id_loket'] ?? null,
-                            'password' => bcrypt($request->password),
-                        ]);
-                        Log::info('Created new local user: ' . $data['nama_pengguna']);
-                    } else {
-                        $localUser->update([
-                            'nama' => $data['nama'],
-                            'nama_pengguna' => $data['nama_pengguna'],
-                            'role' => (int)$data['role'],
-                            'id_loket' => $data['id_loket'] ?? null,
-                            'password' => bcrypt($request->password),
-                        ]);
-                        Log::info('Updated local user: ' . $data['nama_pengguna']);
-                    }
-
-                    // Login ke web menggunakan session Laravel
-                    Auth::login($localUser);
-
-                    // ✅ Simpan token dari API ke session
-                    if (isset($data['token'])) {
-                        session(['token' => $data['token']]);
-                        Log::info('Token stored in session for user: ' . $data['nama_pengguna']);
-                    }
-                    $token = Session::get('token');
-
-                    
-                    Log::info('API login successful for user: ' . $request->nama_pengguna);
-
-                    // Redirect berdasarkan role
-                    return $this->redirectBasedOnRole($localUser);
-                } else {
-                    $message = $responseData['message'] ?? 'Login gagal';
-                    Log::warning('API login failed: ' . $message);
-                    return back()->with('error', 'Login gagal: ' . $message);
-                }
-            } else {
-                $statusCode = $response->status();
-                $errorMessage = 'Terjadi kesalahan pada server (HTTP ' . $statusCode . ')';
-                
-                if ($response->json() && isset($response->json()['message'])) {
-                    $errorMessage = $response->json()['message'];
-                } elseif ($statusCode == 401) {
-                    $errorMessage = 'Nama pengguna atau password salah';
-                } elseif ($statusCode == 500) {
-                    $errorMessage = 'Terjadi kesalahan pada server';
-                }
-                
-                Log::error('API request failed with status ' . $statusCode . ': ' . $response->body());
-                return back()->with('error', 'Login gagal: ' . $errorMessage);
-            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error('Connection error: ' . $e->getMessage());
-            return back()->with('error', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
-        } catch (\Illuminate\Http\Client\RequestException $e) {
-            Log::error('Request error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat mengirim permintaan ke server.');
+            Log::error('Connection error during login: ' . $e->getMessage());
+            return back()->with('error', 'Tidak dapat terhubung ke server. Periksa koneksi Anda.');
         } catch (\Exception $e) {
-            Log::error('General error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi.');
-        }
-    }
-
-    /**
-     * Redirect pengguna berdasarkan role
-     * 1 = Admin, 2 = Petugas
-     */
-    private function redirectBasedOnRole(User $user)
-    {
-        if ($user->role === 1) { // Admin
-            return redirect('/dashboard');
-        } elseif ($user->role === 2) { // Petugas
-            return redirect('/panggilan/admin');
-        } else {
-            Auth::logout();
-            return redirect('/login')->with('error', 'Role tidak dikenali. Silakan hubungi administrator.');
+            Log::error('General error during login: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan yang tidak terduga.');
         }
     }
 
     public function logout(Request $request)
     {
         $token = session('token');
-        $apiBaseUrl = env('API_BASE_URL');
 
-        // Panggil API logout jika ada token
-        if ($token && $apiBaseUrl) {
+        if ($token) {
             try {
-                Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $token
-                ])->post($apiBaseUrl . '/logout');
-                Log::info('API logout request sent for token: ' . $token);
+                // Peringatan: HTTP tidak aman untuk produksi, gunakan HTTPS.
+                Http::withToken($token)->post($this->apiBaseUrl . '/logout');
+                Log::info('API logout request sent.');
             } catch (\Exception $e) {
                 Log::error('API logout failed: ' . $e->getMessage());
             }
         }
 
-        // Hapus session & logout
-        $request->session()->forget('token');
         Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/login');
+    }
+
+    /**
+     * [HELPER] Mengirim kredensial ke API untuk otentikasi.
+     * @param array $credentials
+     * @return Response
+     */
+    private function _authenticateWithApi(array $credentials): Response
+    {
+        Log::info('Attempting API login for user: ' . $credentials['nama_pengguna']);
+
+        // Peringatan: Mengirim password via HTTP sangat tidak aman untuk produksi.
+        // Harap gunakan HTTPS untuk melindungi data pengguna.
+        return Http::timeout(30)->post($this->apiBaseUrl . '/login', $credentials);
+    }
+
+    /**
+     * [HELPER] Sinkronisasi data pengguna dari API ke database lokal.
+     * Menggunakan updateOrCreate() untuk efisiensi.
+     * @param array $apiUserData
+     * @param string $password
+     * @return User
+     */
+    private function _syncLocalUser(array $apiUserData, string $password): User
+    {
+        return User::updateOrCreate(
+            ['id' => $apiUserData['id']], // Kunci untuk mencari pengguna
+            [                               // Data untuk diperbarui atau dibuat
+                'nama' => $apiUserData['nama'],
+                'nama_pengguna' => $apiUserData['nama_pengguna'],
+                'role' => (int) $apiUserData['role'],
+                'id_loket' => $apiUserData['id_loket'] ?? null,
+                'password' => bcrypt($password), // Selalu update password
+            ]
+        );
+    }
+
+    /**
+     * [HELPER] Menangani berbagai jenis error dari respons API.
+     * @param Response $response
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function _handleApiError(Response $response)
+    {
+        $statusCode = $response->status();
+        $responseData = $response->json();
+        $errorMessage = $responseData['message'] ?? 'Terjadi kesalahan pada server.';
+
+        if ($statusCode == 401) {
+            $errorMessage = 'Nama pengguna atau password salah.';
+        }
+
+        Log::error("API login failed with status {$statusCode}: " . $response->body());
+        return back()->with('error', $errorMessage);
+    }
+
+    /**
+     * [HELPER] Redirect pengguna berdasarkan peran.
+     * @param User $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function redirectBasedOnRole(User $user)
+    {
+        if ($user->role === 1) { // Admin
+            return redirect()->intended('dashboard');
+        }
+
+        if ($user->role === 2) { // Petugas
+            return redirect()->intended('panggilan/admin');
+        }
+
+        Auth::logout();
+        return redirect('/login')->with('error', 'Peran pengguna tidak valid.');
     }
 }

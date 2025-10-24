@@ -36,21 +36,19 @@
             padding: 20px;
             color: var(--text-dark);
             overflow: hidden;
-            /* Tambahkan padding bawah untuk ruang running text */
             padding-bottom: 60px;
         }
 
         .container {
             max-width: 1800px;
             margin: 0 auto;
-            height: calc(100vh - 40px - 40px); /* Disesuaikan dengan padding body */
+            height: calc(100vh - 40px - 40px);
             display: grid;
             grid-template-columns: 1fr 380px;
             grid-template-rows: auto 1fr;
             gap: 20px;
         }
 
-        /* Header */
         .header {
             background: var(--bg-card);
             grid-column: 1 / -1;
@@ -95,7 +93,6 @@
             color: var(--primary-green);
         }
 
-        /* Main Display - Left Side */
         .main-display {
             background: var(--bg-card);
             border-radius: 16px;
@@ -198,7 +195,6 @@
             50% { transform: scaleY(1); }
         }
 
-        /* Right Side - Loket List */
         .loket-list {
             background: var(--bg-card);
             border-radius: 16px;
@@ -279,10 +275,9 @@
         .loket-status.calling { color: #15803d; }
         .loket-status.waiting { color: #b45309; }
 
-        /* Fullscreen Button */
         .fullscreen-btn {
             position: fixed;
-            bottom: 60px; /* Disesuaikan untuk running text */
+            bottom: 60px;
             right: 20px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -300,7 +295,6 @@
 
         .fullscreen-btn:hover { background: var(--bg-light); transform: scale(1.1); }
         
-        /* Placeholder State */
         .placeholder-call {
             display: flex;
             flex-direction: column;
@@ -322,7 +316,6 @@
             font-weight: 500;
         }
 
-        /* RUNNING TEXT BILLBOARD */
         .running-text-container {
             position: fixed;
             bottom: 0;
@@ -338,7 +331,7 @@
         .running-text {
             display: inline-block;
             white-space: nowrap;
-            padding-left: 100%; /* Mulai dari luar layar kanan */
+            padding-left: 100%;
             animation: marquee 30s linear infinite;
             font-size: 1.1rem;
             font-weight: 500;
@@ -348,8 +341,6 @@
             100% { transform: translateX(-100%); }
         }
 
-
-        /* Responsive */
         @media (max-width: 1200px) {
             .container {
                 grid-template-columns: 1fr;
@@ -404,7 +395,7 @@
         <div class="loket-list">
             <div class="loket-list-header">DAFTAR LOKET</div>
             <div class="loket-grid" id="loketGrid">
-                </div>
+            </div>
         </div>
     </div>
 
@@ -417,10 +408,13 @@
     <script>
         class ModernQueueDisplay {
             constructor() {
-                this.previousCalls = {};
+                // Simpan hash dari state sebelumnya untuk deteksi perubahan
+                this.previousHash = {};
                 this.speechEnabled = true;
                 this.updateInterval = null;
-                this.lastDisplayedCall = null; // Menyimpan data panggilan terakhir
+                this.currentDisplayedCall = null;
+                this.speechQueue = [];
+                this.isSpeaking = false;
                 
                 this.mainDisplay = document.getElementById('mainDisplay');
                 
@@ -461,6 +455,11 @@
                 const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 const date = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                 document.getElementById('currentTime').innerHTML = `<span class="material-icons">schedule</span> ${date}, ${time}`;
+            }
+
+            // Buat hash sederhana dari data (tidak digunakan, tapi ada di kode asli)
+            createHash(loketId, currentCalling) {
+                return `${loketId}||${currentCalling || 'NULL'}||${Date.now()}`;
             }
 
             async fetchData() {
@@ -508,45 +507,127 @@
             }
             
             processCalls(lokets) {
-                const currentCalls = {};
-                let isAnyLoketCalling = false;
+                let hasAnyCalling = false;
+                let latestNewCall = null;
 
                 lokets.forEach(loket => {
-                    if(loket.current_calling) {
-                        currentCalls[loket.id] = loket.current_calling;
-                        isAnyLoketCalling = true;
+                    const loketId = loket.id;
+                    const currentCalling = loket.current_calling;
+                    
+                    // ==================== PERUBAHAN DI SINI ====================
+                    // 1. Ambil timestamp dari data JSON
+                    const callTimestamp = loket.call_timestamp;
+                    
+                    // 2. Buat identifier unik dengan menyertakan timestamp
+                    // Ini akan membuat identifier berbeda bahkan saat 'recall'
+                    const currentIdentifier = currentCalling ? `${loketId}:${currentCalling}:${callTimestamp}` : null;
+                    // =========================================================
+
+                    const previousIdentifier = this.previousHash[loketId];
+
+                    console.log(`[LOKET ${loketId}] Current: "${currentIdentifier}", Previous: "${previousIdentifier}"`);
+
+                    if (currentCalling) {
+                        hasAnyCalling = true;
+                        
+                        // Deteksi perubahan: identifier berbeda dari sebelumnya
+                        if (currentIdentifier !== previousIdentifier) {
+                            console.log(`[ANNOUNCEMENT TRIGGERED] Loket ${loketId}: ${currentCalling}`);
+                            console.log(`  - Previous: ${previousIdentifier}`);
+                            console.log(`  - Current: ${currentIdentifier}`);
+                            console.log(`  - Reason: ${!previousIdentifier ? 'NEW' : 'CHANGED'}`);
+                            
+                            // Update hash
+                            this.previousHash[loketId] = currentIdentifier;
+                            
+                            // Simpan untuk display
+                            latestNewCall = {
+                                number: currentCalling,
+                                loketName: loket.nama_loket,
+                                loketId: loketId
+                            };
+                            
+                            // Queue announcement
+                            this.queueAnnouncement(currentCalling, loket.nama_loket);
+                        } else {
+                            console.log(`[NO CHANGE] Loket ${loketId} - same identifier`);
+                        }
+                    } else {
+                        // Loket tidak memanggil, reset hash
+                        if (previousIdentifier) {
+                            console.log(`[RESET] Loket ${loketId} - no longer calling`);
+                            this.previousHash[loketId] = null;
+                        }
                     }
                 });
-                
-                // Cek panggilan baru untuk announcement
-                for (const loketId in currentCalls) {
-                    if (this.previousCalls[loketId] !== currentCalls[loketId]) {
-                        const loket = lokets.find(l => l.id == loketId);
-                        this.lastDisplayedCall = { number: loket.current_calling, loketName: loket.nama_loket };
-                        this.playAnnouncement(loket.current_calling, loket.nama_loket);
+
+                // Update display
+                if (latestNewCall) {
+                    this.currentDisplayedCall = latestNewCall;
+                    this.showCall(latestNewCall.number, latestNewCall.loketName);
+                } else if (hasAnyCalling) {
+                    if (this.currentDisplayedCall) {
+                        const stillActive = lokets.find(l => 
+                            l.id === this.currentDisplayedCall.loketId && 
+                            l.current_calling === this.currentDisplayedCall.number
+                        );
+                        if (stillActive) return;
                     }
-                }
-                
-                this.previousCalls = currentCalls;
-                
-                // Update tampilan utama
-                if (isAnyLoketCalling) {
-                    // Jika ada panggilan, tampilkan yang terakhir disimpan
-                    if (this.lastDisplayedCall) {
-                        this.showCall(this.lastDisplayedCall.number, this.lastDisplayedCall.loketName);
+                    
+                    const firstCalling = lokets.find(l => l.current_calling);
+                    if (firstCalling) {
+                        this.currentDisplayedCall = {
+                            number: firstCalling.current_calling,
+                            loketName: firstCalling.nama_loket,
+                            loketId: firstCalling.id
+                        };
+                        this.showCall(firstCalling.current_calling, firstCalling.nama_loket);
                     }
                 } else {
-                    // Jika tidak ada panggilan sama sekali, tampilkan placeholder
-                    this.lastDisplayedCall = null; // Reset
+                    this.currentDisplayedCall = null;
                     this.showPlaceholder();
                 }
             }
 
+            queueAnnouncement(number, loketName) {
+                if (!this.speechEnabled) {
+                    console.log('[SPEECH DISABLED] Would announce:', number, loketName);
+                    return;
+                }
+                
+                console.log('[QUEUE] Adding to speech queue:', number, loketName);
+                this.speechQueue.push({ number, loketName });
+                
+                if (!this.isSpeaking) {
+                    this.processNextAnnouncement();
+                }
+            }
+
+            processNextAnnouncement() {
+                if (this.speechQueue.length === 0) {
+                    this.isSpeaking = false;
+                    console.log('[QUEUE] Speech queue empty');
+                    return;
+                }
+
+                this.isSpeaking = true;
+                const { number, loketName } = this.speechQueue.shift();
+                console.log('[QUEUE] Processing:', number, loketName, `(${this.speechQueue.length} remaining)`);
+                
+                this.playAnnouncement(number, loketName, () => {
+                    setTimeout(() => {
+                        this.processNextAnnouncement();
+                    }, 500);
+                });
+            }
+
             showCall(number, loketName) {
-                // Cek apakah panggilan yang sama sudah ditampilkan
-                const currentDisplayedNumber = this.mainDisplay.querySelector('.current-number-display');
-                if (currentDisplayedNumber && currentDisplayedNumber.textContent === number) {
-                    return; // Sudah ditampilkan, tidak perlu render ulang
+                const currentNumber = this.mainDisplay.querySelector('.current-number-display');
+                const currentLoket = this.mainDisplay.querySelector('.current-loket-display span:nth-child(2)');
+                
+                if (currentNumber && currentNumber.textContent === number &&
+                    currentLoket && currentLoket.textContent === loketName) {
+                    return;
                 }
                 
                 this.mainDisplay.innerHTML = `
@@ -569,9 +650,8 @@
             }
             
             showPlaceholder() {
-                // Cek apakah placeholder sudah ditampilkan
                 if (this.mainDisplay.querySelector('.placeholder-call')) {
-                    return; // Sudah ditampilkan, tidak perlu render ulang
+                    return;
                 }
 
                 this.mainDisplay.innerHTML = `
@@ -582,19 +662,37 @@
                 `;
             }
 
-            playAnnouncement(number, loketName) {
-                if (!this.speechEnabled) return;
+            playAnnouncement(number, loketName, onComplete) {
+                const numberSpaced = number.split('').join(' ');
+                const textToSpeak = `Nomor Antrian, ${numberSpaced}, silakan menuju ke, loket ${loketName}`;
                 
-                const textToSpeak = `Nomor Antrian, ${number.split('').join(' ')}, silakan menuju ke, ${loketName}`;
+                console.log(`[SPEECH] Speaking: "${textToSpeak}"`);
                 
                 window.speechSynthesis.cancel();
                 
-                const utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.lang = 'id-ID';
-                utterance.rate = 0.9;
-                
-                utterance.onerror = (e) => console.error('Speech synthesis error:', e);
-                window.speechSynthesis.speak(utterance);
+                setTimeout(() => {
+                    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                    utterance.lang = 'id-ID';
+                    utterance.rate = 0.85;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+                    
+                    utterance.onstart = () => {
+                        console.log('[SPEECH] Started');
+                    };
+                    
+                    utterance.onend = () => {
+                        console.log('[SPEECH] Ended');
+                        if (onComplete) onComplete();
+                    };
+                    
+                    utterance.onerror = (e) => {
+                        console.error('[SPEECH ERROR]:', e);
+                        if (onComplete) onComplete();
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                }, 250);
             }
         }
 

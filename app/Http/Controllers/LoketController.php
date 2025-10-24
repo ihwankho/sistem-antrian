@@ -6,135 +6,88 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Client\Pool;
 
 class LoketController extends Controller
 {
+    private $apiBaseUrl;
+
+    public function __construct()
+    {
+        // [KONSISTENSI] Mengambil URL API dari config/services.php
+        $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
+    }
+
     public function index()
     {
         try {
             $token = Session::get('token');
-            Log::info('Mengambil data loket dari: http://localhost:8001/api/lokets');
-            
-            // Menggunakan hardcode URL untuk mengambil data loket
-            $loketResponse = Http::withToken($token)->get('http://localhost:8001/api/lokets');
-            $lokets = [];
 
-            if ($loketResponse->successful()) {
-                $responseData = $loketResponse->json();
-                Log::info('Response API Loket: ', $responseData ?: []);
-                
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $lokets = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $lokets = $responseData;
-                }
-            } else {
-                Log::error('Gagal mengambil data loket. Status: ' . $loketResponse->status());
-                if ($loketResponse->status() == 401) {
-                    Session::forget('token');
+            // [PERFORMA] Menjalankan tiga panggilan API secara bersamaan
+            $responses = Http::pool(fn (Pool $pool) => [
+                $pool->withToken($token)->get($this->apiBaseUrl . '/lokets'),
+                $pool->withToken($token)->get($this->apiBaseUrl . '/departemen-loket'),
+                $pool->withToken($token)->get($this->apiBaseUrl . '/users-loket'), // Token ditambahkan untuk konsistensi
+            ]);
+
+            // Cek jika ada respons yang tidak terotorisasi (sesi berakhir)
+            foreach ($responses as $response) {
+                if ($response->unauthorized()) {
+                    Session::flush();
                     return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
                 }
             }
 
-            // Menggunakan hardcode URL untuk mengambil data departemen-loket
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen-loket');
-            $departemens = [];
-            
-            if ($departemenResponse->successful()) {
-                $responseData = $departemenResponse->json();
-                
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $departemens = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $departemens = $responseData;
-                }
-            }
-
-            // Menggunakan hardcode URL untuk mengambil data users-loket
-            $usersResponse = Http::get('http://localhost:8001/api/users-loket');
-            $users = [];
-            
-            if ($usersResponse->successful()) {
-                $responseData = $usersResponse->json();
-                
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $users = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $users = $responseData;
-                }
-            }
+            // Ekstrak data dari respons yang berhasil
+            $lokets = $responses[0]->successful() ? $responses[0]->json('data', []) : [];
+            $departemens = $responses[1]->successful() ? $responses[1]->json('data', []) : [];
+            $users = $responses[2]->successful() ? $responses[2]->json('data', []) : [];
 
             return view('loket.index', compact('lokets', 'departemens', 'users'));
         } catch (\Exception $e) {
-            Log::error('Exception dalam LoketController@index: ' . $e->getMessage());
-            return view('loket.index', ['lokets' => [], 'departemens' => [], 'users' => []])
-                ->with('error', 'Terjadi kesalahan saat mengambil data: ' . $e->getMessage());
+            Log::error('Exception di LoketController@index: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat memuat data loket.');
         }
     }
 
     public function create()
     {
-        try {
-            $token = Session::get('token');
-            // Menggunakan hardcode URL untuk mengambil data departemen
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen-loket');
-            $departemens = [];
-            
-            if ($departemenResponse->successful()) {
-                $responseData = $departemenResponse->json();
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $departemens = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $departemens = $responseData;
-                }
-            } else {
-                if ($departemenResponse->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
-            }
-
-            return view('loket.create', compact('departemens'));
-        } catch (\Exception $e) {
-            return redirect()->route('loket.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
+        // Form create tidak memerlukan data awal, bisa langsung tampilkan view
+        return view('loket.create');
     }
 
     public function store(Request $request)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge(['nama_loket' => strip_tags($request->input('nama_loket'))]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_loket' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            Log::info('Mengirim data ke API: http://localhost:8001/api/lokets');
-            
-            $response = Http::withToken($token)->post('http://localhost:8001/api/lokets', $request->all());
-            
-            Log::info('Response status: ' . $response->status());
-            Log::info('Response body: ' . $response->body());
+            $response = Http::withToken($token)->post($this->apiBaseUrl . '/lokets', $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
 
             if ($response->successful()) {
                 return redirect()->route('loket.index')->with('success', 'Loket berhasil ditambahkan.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Terjadi kesalahan saat menyimpan data';
-            
-            if (isset($errorData['errors'])) {
-                return redirect()->back()->withErrors($errorData['errors'])->withInput();
-            } else {
-                return redirect()->back()->withErrors(['error' => $errorMessage])->withInput();
-            }
-            
+
+            return back()->with('error', $response->json('message', 'Gagal menambahkan loket.'))->withInput();
+
         } catch (\Exception $e) {
-            Log::error('Exception dalam store: ' . $e->getMessage());
-            return redirect()->back()
-                ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()])
-                ->withInput();
+            Log::error('Exception di LoketController@store: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -142,69 +95,58 @@ class LoketController extends Controller
     {
         try {
             $token = Session::get('token');
-            // Menggunakan hardcode URL untuk mengambil data loket
-            $response = Http::withToken($token)->get("http://localhost:8001/api/lokets/{$id}");
-            
-            // Menggunakan hardcode URL untuk mengambil data departemen
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen-loket');
-            
+            $response = Http::withToken($token)->get($this->apiBaseUrl . "/lokets/{$id}");
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
+
             if ($response->failed()) {
                 return redirect()->route('loket.index')->with('error', 'Loket tidak ditemukan.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            $responseData = $response->json();
-            $loket = [];
-            if (isset($responseData['data'])) {
-                $loket = $responseData['data'];
-            } elseif (is_array($responseData)) {
-                $loket = $responseData;
-            }
 
-            $departemens = [];
-            if ($departemenResponse->successful()) {
-                $departemenData = $departemenResponse->json();
-                if (isset($departemenData['data']) && is_array($departemenData['data'])) {
-                    $departemens = $departemenData['data'];
-                } elseif (is_array($departemenData)) {
-                    $departemens = $departemenData;
-                }
-            }
-            
-            return view('loket.edit', compact('loket', 'departemens'));
+            $loket = $response->json('data', []);
+
+            return view('loket.edit', compact('loket'));
+
         } catch (\Exception $e) {
-            return redirect()->route('loket.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di LoketController@edit: ' . $e->getMessage());
+            return redirect()->route('loket.index')->with('error', 'Terjadi kesalahan pada server.');
         }
     }
 
     public function update(Request $request, $id)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge(['nama_loket' => strip_tags($request->input('nama_loket'))]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_loket' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            // Menggunakan hardcode URL untuk update data loket
-            $response = Http::withToken($token)->put("http://localhost:8001/api/lokets/{$id}", $request->all());
+            $response = Http::withToken($token)->put($this->apiBaseUrl . "/lokets/{$id}", $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
 
             if ($response->successful()) {
                 return redirect()->route('loket.index')->with('success', 'Loket berhasil diperbarui.');
             }
 
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
+            return back()->with('error', $response->json('message', 'Gagal memperbarui loket.'))->withInput();
 
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Gagal update';
-            $errors = isset($errorData['errors']) ? $errorData['errors'] : [$errorMessage];
-            
-            return back()->withErrors($errors)->withInput();
         } catch (\Exception $e) {
-            return back()->withErrors(['Terjadi kesalahan: ' . $e->getMessage()])->withInput();
+            Log::error('Exception di LoketController@update: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -212,22 +154,22 @@ class LoketController extends Controller
     {
         try {
             $token = Session::get('token');
-            // Menggunakan hardcode URL untuk menghapus data loket
-            $response = Http::withToken($token)->delete("http://localhost:8001/api/lokets/{$id}");
+            $response = Http::withToken($token)->delete($this->apiBaseUrl . "/lokets/{$id}");
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
 
             if ($response->successful()) {
                 return redirect()->route('loket.index')->with('success', 'Loket berhasil dihapus.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            return redirect()->route('loket.index')->with('error', 'Gagal menghapus loket.');
+
+            return redirect()->route('loket.index')->with('error', $response->json('message', 'Gagal menghapus loket.'));
+
         } catch (\Exception $e) {
-            return redirect()->route('loket.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di LoketController@destroy: ' . $e->getMessage());
+            return redirect()->route('loket.index')->with('error', 'Terjadi kesalahan pada server.');
         }
     }
 }

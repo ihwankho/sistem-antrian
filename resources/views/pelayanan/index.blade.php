@@ -13,6 +13,7 @@
             <h2 class="fw-bold">Manajemen Layanan</h2>
             <a href="{{ route('pelayanan.create') }}" class="btn btn-primary" style="background-color: #6366f1; border:none;"><i class="material-icons me-2">add</i><span>Tambah Layanan</span></a>
         </div>
+
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-light">
@@ -21,7 +22,8 @@
                 <tbody>
                     @forelse ($pelayanan as $layanan)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ ($pelayanan->currentPage() - 1) * $pelayanan->perPage() + $loop->iteration }}</td>
+                        
                         <td>{{ $layanan['nama_layanan'] }}</td>
                         <td>{{ $layanan['departemen']['nama_departemen'] ?? 'N/A' }}</td>
                         <td class="text-center">
@@ -38,6 +40,11 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="mt-4" data-turbo="false">
+            {{ $pelayanan->links('pagination::bootstrap-5') }}
+        </div>
+        
     </div>
 </main>
 @endsection

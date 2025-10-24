@@ -19,97 +19,160 @@ use Illuminate\Support\Str;
 
 class AntrianController extends Controller
 {
-    //Menambah antrian
+    /**
+     * Menambah antrian baru.
+     */
     public function store(Request $request)
-    {
-        DB::beginTransaction();
-        try {
-            // [PERBAIKAN] Validasi NIK dibuat lebih ketat, harus 16 digit angka.
-            $validated = $request->validate([
-                'nama_pengunjung' => 'required|string|max:255',
-                'nik' => 'required|digits:16',
-                'no_hp' => 'nullable|string|max:15',
-                'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-                'alamat' => 'nullable|string',
-                'id_pelayanan' => 'required|exists:pelayanans,id',
-                'foto_ktp' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-                'foto_wajah' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            ]);
+{
+    DB::beginTransaction();
 
-            $fotoKtpPath = null;
-            $fotoWajahPath = null;
+    try {
+        // ✅ Validasi dasar tanpa 'image' atau 'mimes'
+        $validated = $request->validate([
+            'nama_pengunjung' => 'required|string|max:255',
+            'no_hp'           => 'required|string|min:10|max:13',
+            'jenis_kelamin'   => 'nullable|in:Laki-laki,Perempuan',
+            'alamat'          => 'nullable|string',
+            'id_pelayanan'    => 'required|exists:pelayanans,id',
+            'foto_wajah'      => 'required|file|max:2048',
+        ]);
 
-            if ($request->hasFile('foto_ktp')) {
-                $fotoKtpPath = $request->file('foto_ktp')->store('ktp', 'public');
+        $fotoWajahPath = null;
+
+        // ✅ Pemeriksaan manual file gambar
+        if ($request->hasFile('foto_wajah')) {
+            $foto = $request->file('foto_wajah');
+
+            // 1️⃣ Periksa ekstensi file
+            $allowedExt = ['jpg', 'jpeg', 'png'];
+            $ext = strtolower($foto->getClientOriginalExtension());
+            if (!in_array($ext, $allowedExt)) {
+                throw new \Exception('Ekstensi file tidak diizinkan. Hanya JPG atau PNG.');
             }
-            if ($request->hasFile('foto_wajah')) {
-                $fotoWajahPath = $request->file('foto_wajah')->store('wajah', 'public');
+
+            // 2️⃣ Pastikan file benar-benar gambar
+            if (!@getimagesize($foto->getRealPath())) {
+                throw new \Exception('File yang diunggah bukan gambar yang valid.');
             }
 
-            $pengunjung = Pengunjung::create([
+            // 3️⃣ Simpan file ke public/images
+            $filename = time() . '_' . $foto->getClientOriginalName();
+            $foto->move(public_path('images'), $filename);
+
+            // 4️⃣ Simpan path relatif ke database
+            $fotoWajahPath = 'images/' . $filename;
+        }
+
+        // ✅ Simpan atau update data pengunjung
+        $pengunjung = Pengunjung::firstOrCreate(
+            ['no_hp' => $validated['no_hp']],
+            [
                 'nama_pengunjung' => $validated['nama_pengunjung'],
-                'nik' => $validated['nik'],
-                'no_hp' => $validated['no_hp'] ?? null,
-                'jenis_kelamin' => $validated['jenis_kelamin'],
-                'alamat' => $validated['alamat'] ?? null,
-                'foto_ktp' => $fotoKtpPath,
-                'foto_wajah' => $fotoWajahPath
-            ]);
+                'jenis_kelamin'   => $validated['jenis_kelamin'] ?? null,
+                'alamat'          => $validated['alamat'] ?? null,
+                'foto_wajah'      => $fotoWajahPath,
+            ]
+        );
 
-            $pelayanan = Pelayanan::with('departemen.loket')->findOrFail($validated['id_pelayanan']);
-            $idLoket = $pelayanan->departemen->loket->id;
+        if (!$pengunjung->wasRecentlyCreated && $fotoWajahPath) {
+            $pengunjung->foto_wajah = $fotoWajahPath;
+            $pengunjung->save();
+        }
 
-            $lastQueue = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
-                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
-                ->where('departemens.id_loket', $idLoket)
-                ->whereDate('antrians.created_at', now()->toDateString())
-                ->max('nomor_antrian');
+        // ✅ Buat nomor antrian
+        $pelayanan = Pelayanan::with('departemen.loket')->findOrFail($validated['id_pelayanan']);
+        $idLoket = $pelayanan->departemen->loket->id;
 
-            $nomorAntrian = $lastQueue ? $lastQueue + 1 : 1;
+        $lastQueue = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+            ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+            ->where('departemens.id_loket', $idLoket)
+            ->whereDate('antrians.created_at', now()->toDateString())
+            ->max('nomor_antrian');
 
-            $antrian = Antrian::create([
-                'uuid' => Str::uuid(),
-                'nomor_antrian' => $nomorAntrian,
-                'status_antrian' => 1, // 1 = menunggu
-                'id_pengunjung' => $pengunjung->id,
-                'id_pelayanan' => $pelayanan->id
-            ]);
+        $nomorAntrian = $lastQueue ? $lastQueue + 1 : 1;
 
-            // [CATATAN] Query ini akan dijalankan setiap kali ada antrian baru.
-            // Untuk optimasi di masa depan, daftar loket ini bisa di-cache.
-            $lokets = DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
-            $loketIndex = array_search($idLoket, $lokets);
-            $kodeHuruf = chr(65 + $loketIndex);
+        $antrian = Antrian::create([
+            'uuid'            => Str::uuid(),
+            'nomor_antrian'   => $nomorAntrian,
+            'status_antrian'  => 1,
+            'id_pengunjung'   => $pengunjung->id,
+            'id_pelayanan'    => $pelayanan->id,
+        ]);
 
-            $kodeAntrian = $kodeHuruf . str_pad($nomorAntrian, 3, '0', STR_PAD_LEFT);
+        // ✅ Format kode antrian
+        $lokets = DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
+        $loketIndex = array_search($idLoket, $lokets);
+        $kodeHuruf = chr(65 + $loketIndex);
+        $kodeAntrian = $kodeHuruf . str_pad($nomorAntrian, 3, '0', STR_PAD_LEFT);
 
-            DB::commit();
+        DB::commit();
 
-            $tiket = [
-                'id' => $antrian->id,
-                'uuid' => $antrian->uuid,
-                'nomor_antrian' => $kodeAntrian,
-                'nama_departemen' => $pelayanan->departemen->nama_departemen ?? null,
-                'nama_loket' => $pelayanan->departemen->loket->nama_loket ?? null,
-            ];
+        // ✅ Data tiket untuk response
+        $tiket = [
+            'id'              => $antrian->id,
+            'uuid'            => $antrian->uuid,
+            'nomor_antrian'   => $kodeAntrian,
+            'nama_departemen' => $pelayanan->departemen->nama_departemen ?? null,
+            'nama_loket'      => $pelayanan->departemen->loket->nama_loket ?? null,
+        ];
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Tiket antrian berhasil dibuat',
-                'data' => $tiket
-            ], 201);
+        return response()->json([
+            'status'  => true,
+            'message' => 'Tiket antrian berhasil dibuat',
+            'data'    => $tiket,
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Gagal membuat tiket antrian: ' . $e->getMessage() . ' di baris ' . $e->getLine());
+        return response()->json([
+            'status'  => false,
+            'message' => 'Gagal membuat tiket antrian',
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+    /**
+     * Memeriksa apakah sudah ada tiket untuk no_hp dan layanan tertentu pada hari ini.
+     */
+    public function check(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'no_hp'          => 'required|string|min:10|max:13', // [DIPERBAIKI]
+            'id_pelayanan' => 'required|integer|exists:pelayanans,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'message' => 'Input tidak valid.', 'errors' => $validator->errors()], 400);
+        }
+
+        try {
+            $noHp = $request->input('no_hp');
+            $idPelayanan = $request->input('id_pelayanan');
+
+            $antrianExists = Antrian::where('id_pelayanan', $idPelayanan)
+                ->whereDate('created_at', now()->toDateString())
+                ->whereHas('pengunjung', function ($query) use ($noHp) {
+                    $query->where('no_hp', $noHp);
+                })
+                ->exists();
+
+            if ($antrianExists) {
+                return response()->json(['status' => true, 'message' => 'Tiket untuk nomor HP ini sudah terdaftar hari ini.'], 200);
+            } else {
+                return response()->json(['status' => false, 'message' => 'Nomor HP belum terdaftar untuk layanan ini hari ini.'], 200);
+            }
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Gagal membuat tiket antrian: ' . $e->getMessage() . ' di baris ' . $e->getLine());
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal membuat tiket antrian',
-                'error' => $e->getMessage()
-            ], 500);
+            Log::error('Error saat memeriksa antrian dengan No HP: ' . $e->getMessage());
+            return response()->json(['status' => false, 'message' => 'Terjadi kesalahan pada server saat memeriksa tiket.'], 500);
         }
     }
 
-    //Daftar antrian berdasarkan loket
+    /**
+     * Daftar antrian berdasarkan loket.
+     */
     public function getByLoket($id_loket)
     {
         try {
@@ -118,7 +181,6 @@ class AntrianController extends Controller
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->join('lokets', 'departemens.id_loket', '=', 'lokets.id')
                 ->where('lokets.id', $id_loket)
-                // [PERBAIKAN] Menambahkan filter HANYA untuk antrian hari ini.
                 ->whereDate('antrians.created_at', now()->toDateString())
                 ->select(
                     'antrians.id',
@@ -132,12 +194,11 @@ class AntrianController extends Controller
                 ->orderBy('antrians.nomor_antrian', 'asc')
                 ->get();
 
-            // [PERBAIKAN] Logika penanganan "antrian kosong" dipindah ke bawah agar lebih akurat.
             if ($antrian->isEmpty()) {
                 return response()->json([
-                    'status' => true, // Diubah menjadi true karena query berhasil, hanya datanya yang kosong.
+                    'status' => true,
                     'message' => 'Tidak ada antrian untuk loket ini hari ini.',
-                    'data' => [] // Kembalikan array kosong.
+                    'data' => []
                 ], 200);
             }
 
@@ -165,79 +226,78 @@ class AntrianController extends Controller
         }
     }
 
-    //semua antrian dari semua loket
- public function getAllAntrian()
- {
-     try {
-         // [BARU] Hitung rata-rata waktu pelayanan untuk hari ini
-         $completedToday = Antrian::where('status_antrian', 3) // Hanya yang Selesai
-             ->whereDate('updated_at', today())
-             ->whereNotNull('waktu_panggil')
-             ->get();
+    /**
+     * Mengambil semua antrian dari semua loket untuk monitor.
+     */
+    public function getAllAntrian()
+    {
+        try {
+            $completedToday = Antrian::where('status_antrian', 3)
+                ->whereDate('updated_at', today())
+                ->whereNotNull('waktu_panggil')
+                ->get();
 
-         $avgServiceTime = 0;
-         if ($completedToday->count() > 0) {
-             $totalMinutes = $completedToday->sum(function ($antrian) {
-                 $waktuPanggil = \Carbon\Carbon::parse($antrian->waktu_panggil);
-                 $waktuSelesai = \Carbon\Carbon::parse($antrian->updated_at);
-                 return $waktuSelesai->isAfter($waktuPanggil) ? $waktuSelesai->diffInMinutes($waktuPanggil) : 0;
-             });
-             // Jika total menit lebih dari 0, hitung rata-rata. Minimal 1 menit.
-             if ($totalMinutes > 0) {
-                 $avgServiceTime = max(1, round($totalMinutes / $completedToday->count()));
-             }
-         }
+            $avgServiceTime = 0;
+            if ($completedToday->count() > 0) {
+                $totalMinutes = $completedToday->sum(function ($antrian) {
+                    $waktuPanggil = \Carbon\Carbon::parse($antrian->waktu_panggil);
+                    $waktuSelesai = \Carbon\Carbon::parse($antrian->updated_at);
+                    return $waktuSelesai->isAfter($waktuPanggil) ? $waktuSelesai->diffInMinutes($waktuPanggil) : 0;
+                });
+                if ($totalMinutes > 0) {
+                    $avgServiceTime = max(1, round($totalMinutes / $completedToday->count()));
+                }
+            }
 
-         // Jika tidak ada data, gunakan default 7 menit
-         if ($avgServiceTime === 0) {
-             $avgServiceTime = 7; // Default waktu pelayanan (dalam menit)
-         }
+            if ($avgServiceTime === 0) {
+                $avgServiceTime = 7;
+            }
 
+            $data = \DB::table('antrians')
+                ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
+                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
+                ->join('lokets', 'departemens.id_loket', '=', 'lokets.id')
+                ->select('antrians.id', 'antrians.nomor_antrian', 'departemens.id_loket', 'lokets.nama_loket', 'antrians.status_antrian')
+                ->whereDate('antrians.created_at', today())
+                ->whereIn('antrians.status_antrian', [1, 2])
+                ->orderBy('lokets.id', 'asc')
+                ->orderBy('antrians.nomor_antrian', 'asc')
+                ->get();
 
-         // Ambil data antrian saat ini (logika lama tetap sama)
-         $data = \DB::table('antrians')
-             ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
-             ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
-             ->join('lokets', 'departemens.id_loket', '=', 'lokets.id')
-             ->select('antrians.id', 'antrians.nomor_antrian', 'departemens.id_loket', 'lokets.nama_loket', 'antrians.status_antrian')
-             ->whereDate('antrians.created_at', today())
-             ->whereIn('antrians.status_antrian', [1, 2]) // Hanya ambil yang Menunggu & Dipanggil
-             ->orderBy('lokets.id', 'asc')
-             ->orderBy('antrians.nomor_antrian', 'asc')
-             ->get();
+            $lokets = \DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
 
-         $lokets = \DB::table('lokets')->orderBy('id', 'ASC')->pluck('id')->toArray();
+            $data = $data->map(function ($item) use ($lokets) {
+                $loketIndex = array_search($item->id_loket, $lokets);
+                $kodeHuruf = chr(65 + $loketIndex);
+                $item->kode_antrian = $kodeHuruf . str_pad($item->nomor_antrian, 3, '0', STR_PAD_LEFT);
+                unset($item->id_loket);
+                return $item;
+            });
 
-         $data = $data->map(function ($item) use ($lokets) {
-             $loketIndex = array_search($item->id_loket, $lokets);
-             $kodeHuruf = chr(65 + $loketIndex);
-             $item->kode_antrian = $kodeHuruf . str_pad($item->nomor_antrian, 3, '0', STR_PAD_LEFT);
-             unset($item->id_loket);
-             return $item;
-         });
+            $grouped = $data->groupBy('nama_loket')->map(function ($items, $loket) {
+                return ['loket' => $loket, 'antrian' => $items->values()];
+            })->values();
 
-         $grouped = $data->groupBy('nama_loket')->map(function ($items, $loket) {
-             return ['loket' => $loket, 'antrian' => $items->values()];
-         })->values();
+            return response()->json([
+                'status' => true,
+                'message' => 'Data antrian berhasil diambil',
+                'avg_service_time' => $avgServiceTime,
+                'data' => $grouped
+            ], 200);
 
-         // [DIUBAH] Tambahkan avg_service_time ke dalam response JSON
-         return response()->json([
-             'status' => true,
-             'message' => 'Data antrian berhasil diambil',
-             'avg_service_time' => $avgServiceTime,
-             'data' => $grouped
-         ], 200);
+        } catch (\Throwable $e) {
+            \Log::error("Error in getAllAntrian: " . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data antrian',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
-     } catch (\Throwable $e) {
-         \Log::error("Error in getAllAntrian: " . $e->getMessage());
-         return response()->json([
-             'status' => false,
-             'message' => 'Terjadi kesalahan saat mengambil data antrian',
-             'error' => $e->getMessage()
-         ], 500);
-     }
- }
-
+    /**
+     * Menampilkan data tiket publik berdasarkan UUID.
+     */
     public function showPublicTicketByUuid($uuid)
     {
         try {
@@ -261,11 +321,13 @@ class AntrianController extends Controller
 
             return response()->json($data, 200);
         } catch (\Exception $e) {
-            // [KONSISTENSI] Menggunakan format respons JSON yang konsisten dengan method lain.
             return response()->json(['status' => false, 'message' => 'Tiket tidak ditemukan'], 404);
         }
     }
 
+    /**
+     * Menampilkan data detail antrian berdasarkan UUID.
+     */
     public function showDetailByUuid($uuid)
     {
         try {
@@ -275,7 +337,6 @@ class AntrianController extends Controller
 
             return response()->json($antrian);
         } catch (\Exception $e) {
-            // [KONSISTENSI] Menggunakan format respons JSON yang konsisten.
             return response()->json([
                 'status' => false,
                 'message' => 'Data detail antrian tidak ditemukan',
@@ -284,93 +345,88 @@ class AntrianController extends Controller
         }
     }
 
+    /**
+     * Memanggil antrian berikutnya.
+     */
+    public function callNextAntrian(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $validated = $request->validate([
+                'id_loket' => 'required|exists:lokets,id',
+            ]);
+            $idLoket = $validated['id_loket'];
 
-public function callNextAntrian(Request $request)
-{
-    // Memulai transaksi untuk memastikan konsistensi data
-    DB::beginTransaction();
-    try {
-        // Validasi input id_loket
-        $validated = $request->validate([
-            'id_loket' => 'required|exists:lokets,id',
-        ]);
-        $idLoket = $validated['id_loket'];
+            $isCalling = Antrian::whereHas('pelayanan.departemen', fn ($q) => $q->where('id_loket', $idLoket))
+                ->where('status_antrian', 2)
+                ->whereDate('created_at', today())
+                ->exists();
 
-        // Cek apakah sudah ada antrian yang sedang dipanggil di loket ini
-        $isCalling = Antrian::whereHas('pelayanan.departemen', fn ($q) => $q->where('id_loket', $idLoket))
-            ->where('status_antrian', 2) // Status 'Dipanggil'
-            ->whereDate('created_at', today())
-            ->exists();
+            if ($isCalling) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Masih ada antrian yang sedang dipanggil. Selesaikan atau lewati antrian tersebut.'
+                ], 409);
+            }
 
-        if ($isCalling) {
+            $nextAntrian = Antrian::whereHas('pelayanan.departemen', fn ($q) => $q->where('id_loket', $idLoket))
+                ->where('status_antrian', 1)
+                ->whereDate('created_at', today())
+                ->orderBy('nomor_antrian', 'asc')
+                ->first();
+
+            if (!$nextAntrian) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada antrian lagi di loket ini.'
+                ], 404);
+            }
+
+            $nextAntrian->status_antrian = 2;
+            $nextAntrian->waktu_panggil = now();
+            $nextAntrian->save();
+
+            $loket = Loket::find($idLoket);
+            $sortedLokets = Loket::orderBy('id')->pluck('id')->toArray();
+            $loketIndex = array_search($idLoket, $sortedLokets);
+
+            if ($loketIndex === false) {
+                throw new \Exception('ID Loket tidak ditemukan dalam daftar loket sistem.');
+            }
+
+            $kodeHuruf = chr(65 + $loketIndex);
+            $kodeAntrian = $kodeHuruf . str_pad($nextAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
+            $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Antrian berhasil dipanggil',
+                'data' => [
+                    'id' => $nextAntrian->id,
+                    'kode_antrian' => $kodeAntrian,
+                    'nomor_antrian' => $nextAntrian->nomor_antrian,
+                    'status' => $nextAntrian->status_antrian,
+                    'loket' => $loket->nama_loket,
+                    'voice_text' => "Silakan antrian $kodeAntrianSpasi menuju ke loket $loket->nama_loket"
+                ]
+            ], 200);
+            
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Gagal memanggil antrian: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
-                'message' => 'Masih ada antrian yang sedang dipanggil. Selesaikan atau lewati antrian tersebut.'
-            ], 409); // 409 Conflict
+                'message' => 'Terjadi kesalahan saat memanggil antrian',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Ambil antrian berikutnya yang statusnya 'Menunggu'
-        $nextAntrian = Antrian::whereHas('pelayanan.departemen', fn ($q) => $q->where('id_loket', $idLoket))
-            ->where('status_antrian', 1) // Status 'Menunggu'
-            ->whereDate('created_at', today())
-            ->orderBy('nomor_antrian', 'asc')
-            ->first();
-
-        // Jika tidak ada antrian lagi
-        if (!$nextAntrian) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tidak ada antrian lagi di loket ini.'
-            ], 404); // 404 Not Found
-        }
-
-        // Update status antrian dan catat waktu panggil
-        $nextAntrian->status_antrian = 2;
-        $nextAntrian->waktu_panggil = now(); // <-- Mencatat waktu saat antrian dipanggil
-        $nextAntrian->save();
-
-        // Siapkan data untuk respons
-        $loket = Loket::find($idLoket);
-        $sortedLokets = Loket::orderBy('id')->pluck('id')->toArray();
-        $loketIndex = array_search($idLoket, $sortedLokets);
-
-        if ($loketIndex === false) {
-            throw new \Exception('ID Loket tidak ditemukan dalam daftar loket sistem.');
-        }
-
-        $kodeHuruf = chr(65 + $loketIndex);
-        $kodeAntrian = $kodeHuruf . str_pad($nextAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
-        $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
-
-        // Menyimpan perubahan ke database
-        DB::commit();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Antrian berhasil dipanggil',
-            'data' => [
-                'id' => $nextAntrian->id,
-                'kode_antrian' => $kodeAntrian,
-                'nomor_antrian' => $nextAntrian->nomor_antrian,
-                'status' => $nextAntrian->status_antrian,
-                'loket' => $loket->nama_loket,
-                'voice_text' => "Silakan antrian $kodeAntrianSpasi menuju ke loket $loket->nama_loket"
-            ]
-        ], 200);
-        
-    } catch (\Throwable $e) {
-        // Batalkan semua perubahan jika terjadi error
-        DB::rollBack();
-        Log::error('Gagal memanggil antrian: ' . $e->getMessage());
-        return response()->json([
-            'status' => false,
-            'message' => 'Terjadi kesalahan saat memanggil antrian',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
-
+    /**
+     * Menyelesaikan antrian.
+     */
     public function finishAntrian(Request $request)
     {
         DB::beginTransaction();
@@ -381,12 +437,11 @@ public function callNextAntrian(Request $request)
 
             $antrian = Antrian::findOrFail($validated['id_antrian']);
 
-            // [PERBAIKAN] Pesan error dibuat lebih spesifik.
             if ($antrian->status_antrian != 2) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Gagal, antrian ini tidak dalam status "Dipanggil".'
-                ], 400); // 400 Bad Request lebih sesuai.
+                ], 400);
             }
 
             $antrian->status_antrian = 3;
@@ -413,7 +468,9 @@ public function callNextAntrian(Request $request)
         }
     }
 
-    // [KONSISTENSI] Menggunakan type-hint `Request $request` seperti method lainnya.
+    /**
+     * Melewati antrian.
+     */
     public function SkipAntrian(Request $request)
     {
         $request->validate([
@@ -425,11 +482,10 @@ public function callNextAntrian(Request $request)
                 $antrian = Antrian::findOrFail($request->id_antrian);
 
                 if ($antrian->status_antrian != 2) {
-                    // [PERBAIKAN] Menggunakan response JSON konsisten, bukan abort().
                     throw new Exception('Gagal, antrian ini tidak dalam status "Dipanggil".', 400);
                 }
 
-                $antrian->update(['status_antrian' => 4]); // 4 = Dilewati
+                $antrian->update(['status_antrian' => 4]);
                 return $antrian;
             });
 
@@ -452,62 +508,51 @@ public function callNextAntrian(Request $request)
         }
     }
 
+    /**
+     * Memanggil ulang antrian.
+     */
     public function recallAntrian(Request $request)
     {
-        try {
-            $validated = $request->validate([
-                'id_loket' => 'required|exists:lokets,id',
-            ]);
+        $request->validate([
+            'id_loket' => 'required|exists:lokets,id'
+        ]);
 
-            $idLoket = $validated['id_loket'];
+        $idLoket = $request->id_loket;
+        $today = Carbon::today();
 
-            // Query sudah benar dengan filter tanggal hari ini.
-            $currentAntrian = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
-                ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
-                ->where('departemens.id_loket', $idLoket)
-                ->where('antrians.status_antrian', 2)
-                ->whereDate('antrians.created_at', now()->toDateString())
-                ->select('antrians.*')
-                ->orderBy('antrians.updated_at', 'desc')
-                ->first();
+        // 1. Cari antrian yang sedang dipanggil (status 2) di loket ini
+        $activeAntrian = Antrian::whereHas('pelayanan.departemen', function ($query) use ($idLoket) {
+                $query->where('id_loket', $idLoket);
+            })
+            ->where('status_antrian', 2)
+            ->whereDate('created_at', $today)
+            ->first();
 
-            if (!$currentAntrian) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Tidak ada antrian yang sedang dipanggil untuk dipanggil ulang.'
-                ], 404);
-            }
-
-            $loket = Loket::find($idLoket);
-            $kodeLoket = $loket->nama_loket ?? 'Loket';
-
-            $lokets = Loket::orderBy('id')->pluck('id')->toArray();
-            $loketIndex = array_search($idLoket, $lokets);
-            $kodeHuruf = chr(65 + $loketIndex);
-            $kodeAntrian = $kodeHuruf . str_pad($currentAntrian->nomor_antrian, 3, '0', STR_PAD_LEFT);
-            $kodeAntrianSpasi = implode(' ', str_split($kodeAntrian));
+        // 2. Jika antrian ditemukan
+        if ($activeAntrian) {
+            // 3. INI BAGIAN PENTING: Perbarui timestamp `updated_at`
+            $activeAntrian->touch();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Antrian berhasil dipanggil ulang',
+                'message' => 'Antrian berhasil dipanggil ulang.',
                 'data' => [
-                    'id' => $currentAntrian->id,
-                    'kode_antrian' => $kodeAntrian,
-                    'nomor_antrian' => $currentAntrian->nomor_antrian,
-                    'status' => $currentAntrian->status_antrian,
-                    'loket' => $kodeLoket,
-                    'voice_text' => "Silakan antrian $kodeAntrianSpasi menuju ke loket $kodeLoket"
+                    'id' => $activeAntrian->id,
+                    'nomor_antrian' => $activeAntrian->nomor_antrian
                 ]
-            ], 200);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Terjadi kesalahan saat memanggil ulang antrian',
-                'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
+
+        // 4. Jika tidak ada antrian yang sedang dipanggil
+        return response()->json([
+            'status' => false,
+            'message' => 'Tidak ada antrian aktif untuk dipanggil ulang.'
+        ], 404);
     }
 
+    /**
+     * Mengambil antrian yang sedang dipanggil.
+     */
     public function getAntrianDipanggil()
     {
         try {
@@ -515,7 +560,6 @@ public function callNextAntrian(Request $request)
 
             $antrians = DB::table('antrians')
                 ->where('antrians.status_antrian', 2)
-                // [PERBAIKAN] Menambahkan filter HANYA untuk antrian hari ini.
                 ->whereDate('antrians.created_at', now()->toDateString())
                 ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
@@ -551,14 +595,15 @@ public function callNextAntrian(Request $request)
         }
     }
 
-    //ambil data antrian dan pengunjung
+    /**
+     * Mengambil data antrian dan pengunjung.
+     */
     public function ShowPe($id)
     {
         try {
             $antrian = Antrian::with(['pengunjung', 'pelayanan.departemen.loket'])->findOrFail($id);
             return response()->json($antrian);
         } catch (Exception $e) {
-            // [KONSISTENSI] Menggunakan format respons JSON yang konsisten.
             return response()->json([
                 'status' => false,
                 'message' => 'Data antrian tidak ditemukan',
@@ -567,6 +612,9 @@ public function callNextAntrian(Request $request)
         }
     }
 
+    /**
+     * Mengambil laporan bulanan.
+     */
     public function laporanBulanan(Request $request)
     {
         try {
@@ -597,6 +645,9 @@ public function callNextAntrian(Request $request)
         }
     }
 
+    /**
+     * Mengambil statistik performa.
+     */
     public function getPerformanceStats(Request $request)
     {
         try {
@@ -647,60 +698,24 @@ public function callNextAntrian(Request $request)
         }
     }
 
-    // [PERBAIKAN] Fungsi ini diubah total untuk menggunakan NIK, sesuai logika yang sudah dibangun sebelumnya.
-    public function check(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'nik'          => 'required|digits:16',
-            'id_pelayanan' => 'required|integer|exists:pelayanans,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => false, 'message' => 'Input tidak valid.', 'errors' => $validator->errors()], 400);
-        }
-
-        try {
-            $nik = $request->input('nik');
-            $idPelayanan = $request->input('id_pelayanan');
-
-            // Mencari antrian berdasarkan NIK & layanan untuk hari ini dengan status aktif (1 atau 2).
-            $antrian = Antrian::where('id_pelayanan', $idPelayanan)
-                ->whereDate('created_at', now()->toDateString())
-                ->whereIn('status_antrian', [1, 2]) // Hanya cek yang statusnya Menunggu atau Dipanggil
-                ->whereHas('pengunjung', function ($query) use ($nik) {
-                    $query->where('nik', $nik);
-                })
-                ->select('id', 'id_pelayanan', 'status_antrian as status')
-                ->first();
-
-            if ($antrian) {
-                return response()->json(['status' => true, 'message' => 'Tiket aktif ditemukan.', 'data' => $antrian], 200);
-            } else {
-                // [KONSISTENSI] Kode 200 karena query berhasil, hanya data tidak ditemukan.
-                return response()->json(['status' => false, 'message' => 'Tidak ada tiket aktif untuk NIK ini di layanan terkait.', 'data' => null], 200);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error saat memeriksa antrian dengan NIK: ' . $e->getMessage());
-            return response()->json(['status' => false, 'message' => 'Terjadi kesalahan pada server saat memeriksa tiket.'], 500);
-        }
-    }
-
+    /**
+     * Mencari antrian berdasarkan nomor HP.
+     */
     public function searchByHp(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'no_hp' => 'required|string',
+            'no_hp' => 'required|string|min:10|max:13', // [DIPERBAIKI]
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => false, 'message' => 'Nomor HP wajib diisi.'], 400);
+            return response()->json(['status' => false, 'message' => 'Nomor HP wajib diisi dan harus 10-13 digit.'], 400);
         }
 
         try {
             $noHp = $request->input('no_hp');
 
-            // [PERBAIKAN] Pencarian juga harus dibatasi pada tiket yang masih relevan (belum selesai/skip)
             $antrian = Antrian::whereDate('created_at', now()->toDateString())
-                ->whereIn('status_antrian', [1, 2]) // Hanya tiket yang Menunggu atau Dipanggil
+                ->whereIn('status_antrian', [1, 2])
                 ->whereHas('pengunjung', function ($query) use ($noHp) {
                     $query->where('no_hp', $noHp);
                 })

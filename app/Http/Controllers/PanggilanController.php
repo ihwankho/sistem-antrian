@@ -17,28 +17,28 @@ class PanggilanController extends Controller
     public function admin(Request $request)
     {
         $user = Auth::user();
-        
+
         // Jika petugas, redirect ke halaman petugas
         if ($user->role === 2) {
             return redirect()->route('panggilan.petugas');
         }
-        
+
         $today = Carbon::today();
-        
+
         // Ambil semua loket untuk dropdown
         $lokets = Loket::orderBy('id')->get();
-        
+
         // Mapping ID loket ke huruf
         $loketIds = $lokets->pluck('id')->toArray();
         $loketMap = [];
         foreach ($loketIds as $index => $id) {
             $loketMap[$id] = chr(65 + $index);
         }
-    
+
         // Loket yang dipilih (default loket pertama)
         $selectedLoketId = $request->input('loket', $lokets->first()->id);
         $selectedLoket = Loket::find($selectedLoketId);
-    
+
         // Hitung antrian tersisa
         $antrianTersisa = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
             ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
@@ -46,7 +46,7 @@ class PanggilanController extends Controller
             ->whereDate('antrians.created_at', $today)
             ->where('antrians.status_antrian', 1)
             ->count();
-    
+
         // Ambil antrian yang sedang dipanggil untuk loket yang dipilih
         $currentCalling = Antrian::with(['pelayanan.departemen.loket', 'pengunjung'])
             ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
@@ -56,11 +56,11 @@ class PanggilanController extends Controller
             ->where('antrians.status_antrian', 2)
             ->select('antrians.*')
             ->first();
-    
+
         if ($currentCalling) {
             $currentCalling->kode_antrian = ($loketMap[$selectedLoketId] ?? 'X') . str_pad($currentCalling->nomor_antrian, 3, '0', STR_PAD_LEFT);
         }
-    
+
         // Untuk tabel daftar antrian aktif
         $antrians = Antrian::with(['pelayanan.departemen.loket', 'pengunjung'])
             ->whereDate('created_at', $today)
@@ -75,7 +75,7 @@ class PanggilanController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->perPage ?? 10)
             ->withQueryString();
-    
+
         // Format kode antrian
         $antrians->getCollection()->transform(function ($antrian) use ($loketMap) {
             $loketId = $antrian->pelayanan->departemen->loket->id;
@@ -84,7 +84,7 @@ class PanggilanController extends Controller
             $antrian->nama_loket = $antrian->pelayanan->departemen->loket->nama_loket;
             return $antrian;
         });
-    
+
         return view('panggilan.admin', compact(
             'lokets',
             'selectedLoketId',
@@ -99,18 +99,18 @@ class PanggilanController extends Controller
     public function petugas(Request $request)
     {
         $user = Auth::user();
-        
+
         // Pastikan user adalah petugas dan memiliki loket yang ditugaskan
         if ($user->role !== 2 || !$user->id_loket) {
             return redirect('/login')->with('error', 'Anda tidak memiliki akses ke halaman ini atau belum ditugaskan ke loket tertentu.');
         }
-        
+
         $today = Carbon::today();
         $loketId = $user->id_loket;
-        
+
         // Ambil data loket petugas
         $loket = Loket::findOrFail($loketId);
-        
+
         // Mapping ID loket ke huruf (untuk konsistensi dengan sistem admin)
         $lokets = Loket::orderBy('id')->get();
         $loketIds = $lokets->pluck('id')->toArray();
@@ -118,7 +118,7 @@ class PanggilanController extends Controller
         foreach ($loketIds as $index => $id) {
             $loketMap[$id] = chr(65 + $index);
         }
-    
+
         // Hitung antrian tersisa untuk loket petugas
         $antrianTersisa = Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
             ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
@@ -126,7 +126,7 @@ class PanggilanController extends Controller
             ->whereDate('antrians.created_at', $today)
             ->where('antrians.status_antrian', 1)
             ->count();
-    
+
         // Ambil antrian yang sedang dipanggil untuk loket petugas
         $currentCalling = Antrian::with(['pelayanan.departemen.loket', 'pengunjung'])
             ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
@@ -136,11 +136,11 @@ class PanggilanController extends Controller
             ->where('antrians.status_antrian', 2)
             ->select('antrians.*')
             ->first();
-    
+
         if ($currentCalling) {
             $currentCalling->kode_antrian = ($loketMap[$loketId] ?? 'X') . str_pad($currentCalling->nomor_antrian, 3, '0', STR_PAD_LEFT);
         }
-    
+
         // Untuk tabel daftar antrian aktif (hanya untuk loket petugas)
         $antrians = Antrian::with(['pelayanan.departemen.loket', 'pengunjung'])
             ->join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
@@ -159,7 +159,7 @@ class PanggilanController extends Controller
             ->orderBy('antrians.created_at', 'desc')
             ->paginate($request->perPage ?? 10)
             ->withQueryString();
-    
+
         // Format kode antrian
         $antrians->getCollection()->transform(function ($antrian) use ($loketMap) {
             $loketId = $antrian->pelayanan->departemen->loket->id;
@@ -168,7 +168,7 @@ class PanggilanController extends Controller
             $antrian->nama_loket = $antrian->pelayanan->departemen->loket->nama_loket;
             return $antrian;
         });
-    
+
         return view('panggilan.petugas', compact(
             'loket',
             'loketId',
@@ -182,7 +182,7 @@ class PanggilanController extends Controller
     public function next(Request $request)
     {
         $user = Auth::user();
-        
+
         // Admin menggunakan parameter id_loket, petugas menggunakan loket yang ditugaskan
         if ($user->role === 1) {
             // Admin - validasi parameter
@@ -230,7 +230,7 @@ class PanggilanController extends Controller
     public function recall(Request $request)
     {
         $user = Auth::user();
-        
+
         // Admin menggunakan parameter id_loket, petugas menggunakan loket yang ditugaskan
         if ($user->role === 1) {
             // Admin - validasi parameter
@@ -278,7 +278,7 @@ class PanggilanController extends Controller
     public function finish(Request $request)
     {
         $user = Auth::user();
-        
+
         $request->validate([
             'id_antrian' => 'required|exists:antrians,id'
         ]);
@@ -288,7 +288,7 @@ class PanggilanController extends Controller
             $antrian = Antrian::with(['pelayanan.departemen'])
                 ->where('id', $request->id_antrian)
                 ->first();
-                
+
             if (!$antrian || $antrian->pelayanan->departemen->id_loket != $user->id_loket) {
                 return response()->json([
                     'status' => false,
@@ -323,7 +323,7 @@ class PanggilanController extends Controller
     public function skip(Request $request)
     {
         $user = Auth::user();
-        
+
         $request->validate([
             'id_antrian' => 'required|exists:antrians,id'
         ]);
@@ -333,7 +333,7 @@ class PanggilanController extends Controller
             $antrian = Antrian::with(['pelayanan.departemen'])
                 ->where('id', $request->id_antrian)
                 ->first();
-                
+
             if (!$antrian || $antrian->pelayanan->departemen->id_loket != $user->id_loket) {
                 return response()->json([
                     'status' => false,
@@ -368,7 +368,7 @@ class PanggilanController extends Controller
     public function getStats()
     {
         $user = Auth::user();
-        
+
         if ($user->role !== 2 || !$user->id_loket) {
             return response()->json([
                 'status' => false,
@@ -386,21 +386,21 @@ class PanggilanController extends Controller
                 ->whereDate('antrians.created_at', $today)
                 ->where('antrians.status_antrian', 1)
                 ->count(),
-            
+
             'dipanggil' => Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->where('departemens.id_loket', $loketId)
                 ->whereDate('antrians.created_at', $today)
                 ->where('antrians.status_antrian', 2)
                 ->count(),
-            
+
             'selesai' => Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->where('departemens.id_loket', $loketId)
                 ->whereDate('antrians.created_at', $today)
                 ->where('antrians.status_antrian', 3)
                 ->count(),
-            
+
             'dilewati' => Antrian::join('pelayanans', 'antrians.id_pelayanan', '=', 'pelayanans.id')
                 ->join('departemens', 'pelayanans.id_departemen', '=', 'departemens.id')
                 ->where('departemens.id_loket', $loketId)

@@ -2,103 +2,131 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; // <-- DIPERLUKAN
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Pagination\LengthAwarePaginator; // <-- DIPERLUKAN
 
 class PelayananController extends Controller
 {
-    public function index()
+    private $apiBaseUrl;
+
+    public function __construct()
     {
+        // [KONSISTENSI] Mengambil URL API dari config/services.php
+        $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
+    }
+
+    /**
+     * [MODIFIKASI]
+     * Menampilkan daftar layanan dengan paginasi manual (client-side).
+     */
+    public function index(Request $request)
+    {
+        $perPage = 10; // Tetap 10 per halaman
+        $currentPage = $request->input('page', 1); // Ambil ?page= dari URL
+
         try {
             $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk mengambil data pelayanan
-            $response = Http::withToken($token)->get('http://localhost:8001/api/pelayanan');
-            
-            $pelayanan = [];
-            if ($response->successful()) {
-                $responseData = $response->json();
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $pelayanan = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $pelayanan = $responseData;
-                }
-            } else {
-                if ($response->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
-                Log::error('Gagal mengambil data pelayanan. Status: ' . $response->status());
+
+            // 1. Ambil SEMUA data dari API (tanpa parameter paginasi)
+            $response = Http::withToken($token)->get($this->apiBaseUrl . '/pelayanan');
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
             }
-            
+
+            $allItems = [];
+            if ($response->successful()) {
+                // Asumsi API mengembalikan { data: [...] } berisi SEMUA item
+                $allItems = $response->json('data', []);
+            } else {
+                 Log::warning('Gagal mengambil data pelayanan dari API: '. $response->status());
+            }
+
+            // 2. Buat Paginator secara manual dari array yang sudah lengkap
+
+            // Ubah array biasa menjadi Laravel Collection
+            $allDataCollection = collect($allItems);
+
+            // "Slice" (potong) collection untuk halaman saat ini
+            $itemsForCurrentPage = $allDataCollection->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+            // Hitung total item
+            $total = $allDataCollection->count();
+
+            // Buat objek Paginator
+            $pelayanan = new LengthAwarePaginator(
+                $itemsForCurrentPage,    // Data yang sudah dipotong (maks 10 item)
+                $total,                  // Total semua data (misal: 38)
+                $perPage,                // Item per halaman (10)
+                $currentPage,            // Halaman saat ini
+                [
+                    'path' => $request->url(), // URL dasar
+                    'query' => $request->query(), // Pertahankan query string lain
+                ]
+            );
+
             return view('pelayanan.index', compact('pelayanan'));
+
         } catch (\Exception $e) {
-            Log::error('Exception dalam PelayananController@index: ' . $e->getMessage());
-            return view('pelayanan.index', ['pelayanan' => []])
-                ->with('error', 'Terjadi kesalahan saat mengambil data: ' . $e->getMessage());
+            Log::error('Exception di PelayananController@index: ' . $e->getMessage());
+
+            // Buat paginator kosong saat exception
+            $pelayanan = new LengthAwarePaginator([], 0, $perPage, $currentPage, [
+                'path' => $request->url(),
+                'query' => $request->query()
+            ]);
+
+            return view('pelayanan.index', compact('pelayanan'))->with('error', 'Terjadi kesalahan saat memuat data pelayanan.');
         }
     }
 
     public function create()
     {
-        try {
-            $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk mengambil data departemen
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen');
-            
-            $departemens = [];
-            if ($departemenResponse->successful()) {
-                $responseData = $departemenResponse->json();
-                if (isset($responseData['data']) && is_array($responseData['data'])) {
-                    $departemens = $responseData['data'];
-                } elseif (is_array($responseData)) {
-                    $departemens = $responseData;
-                }
-            } else {
-                if ($departemenResponse->status() == 401) {
-                    Session::forget('token');
-                    return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-                }
-            }
-            
-            return view('pelayanan.create', compact('departemens'));
-        } catch (\Exception $e) {
-            return redirect()->route('pelayanan.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
+        $departemens = $this->_getDepartemens(Session::get('token'));
+        return view('pelayanan.create', compact('departemens'));
     }
 
     public function store(Request $request)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge([
+            'nama_layanan' => strip_tags($request->input('nama_layanan')),
+            'keterangan' => strip_tags($request->input('keterangan')),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_layanan' => 'required|string|max:255',
+            'id_departemen'  => 'required|numeric',
+            'keterangan'     => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk menyimpan data pelayanan
-            $response = Http::withToken($token)->post('http://localhost:8001/api/pelayanan', $request->all());
-            
+            $response = Http::withToken($token)->post($this->apiBaseUrl . '/pelayanan', $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
+
             if ($response->successful()) {
                 return redirect()->route('pelayanan.index')->with('success', 'Layanan berhasil ditambahkan.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Terjadi kesalahan';
-            
-            if (isset($errorData['errors'])) {
-                return back()->withErrors($errorData['errors'])->withInput();
-            }
-            
-            return back()->withErrors(['error' => $errorMessage])->withInput();
+
+            return back()->with('error', $response->json('message', 'Gagal menambahkan layanan.'))->withInput();
         } catch (\Exception $e) {
-            Log::error('Exception dalam PelayananController@store: ' . $e->getMessage());
-            return back()->withErrors(['Terjadi kesalahan: ' . $e->getMessage()])->withInput();
+            Log::error('Exception di PelayananController@store: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -106,75 +134,70 @@ class PelayananController extends Controller
     {
         try {
             $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk mengambil data pelayanan spesifik
-            $layananResponse = Http::withToken($token)->get("http://localhost:8001/api/pelayanan/{$id}");
-            
-            // Menggunakan hardcode URL untuk mengambil data departemen
-            $departemenResponse = Http::withToken($token)->get('http://localhost:8001/api/departemen');
+
+            // [PERFORMA] Menjalankan dua panggilan API secara bersamaan
+            $responses = Http::pool(fn (Pool $pool) => [
+                $pool->withToken($token)->get($this->apiBaseUrl . "/pelayanan/{$id}"),
+                $pool->withToken($token)->get($this->apiBaseUrl . '/departemen'),
+            ]);
+
+            $layananResponse = $responses[0];
+            $departemenResponse = $responses[1];
+
+            if ($layananResponse->unauthorized() || $departemenResponse->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
 
             if ($layananResponse->failed()) {
                 return redirect()->route('pelayanan.index')->with('error', 'Layanan tidak ditemukan.');
             }
-            
-            if ($layananResponse->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
 
-            $responseData = $layananResponse->json();
-            $layanan = [];
-            if (isset($responseData['data'])) {
-                $layanan = $responseData['data'];
-            } elseif (is_array($responseData)) {
-                $layanan = $responseData;
-            }
+            $layanan = $layananResponse->json('data', []);
+            $departemens = $departemenResponse->json('data', []);
 
-            $departemens = [];
-            if ($departemenResponse->successful()) {
-                $departemenData = $departemenResponse->json();
-                if (isset($departemenData['data']) && is_array($departemenData['data'])) {
-                    $departemens = $departemenData['data'];
-                } elseif (is_array($departemenData)) {
-                    $departemens = $departemenData;
-                }
-            }
-            
             return view('pelayanan.edit', compact('layanan', 'departemens'));
         } catch (\Exception $e) {
-            return redirect()->route('pelayanan.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di PelayananController@edit: ' . $e->getMessage());
+            return redirect()->route('pelayanan.index')->with('error', 'Terjadi kesalahan pada server.');
         }
     }
 
     public function update(Request $request, $id)
     {
+        // [KEAMANAN] Sanitasi dan Validasi input sebelum dikirim ke API
+        $request->merge([
+            'nama_layanan' => strip_tags($request->input('nama_layanan')),
+            'keterangan' => strip_tags($request->input('keterangan')),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'nama_layanan' => 'required|string|max:255',
+            'id_departemen'  => 'required|numeric',
+            'keterangan'     => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
         try {
             $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk memperbarui data pelayanan
-            $response = Http::withToken($token)->put("http://localhost:8001/api/pelayanan/{$id}", $request->all());
-            
+            $response = Http::withToken($token)->put($this->apiBaseUrl . "/pelayanan/{$id}", $validator->validated());
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
+
             if ($response->successful()) {
                 return redirect()->route('pelayanan.index')->with('success', 'Layanan berhasil diperbarui.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            $errorData = $response->json();
-            $errorMessage = isset($errorData['message']) ? $errorData['message'] : 'Gagal update';
-            
-            if (isset($errorData['errors'])) {
-                return back()->withErrors($errorData['errors'])->withInput();
-            }
-            
-            return back()->withErrors(['error' => $errorMessage])->withInput();
+
+            return back()->with('error', $response->json('message', 'Gagal memperbarui layanan.'))->withInput();
         } catch (\Exception $e) {
-            Log::error('Exception dalam PelayananController@update: ' . $e->getMessage());
-            return back()->withErrors(['Terjadi kesalahan: ' . $e->getMessage()])->withInput();
+            Log::error('Exception di PelayananController@update: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan pada server.')->withInput();
         }
     }
 
@@ -182,24 +205,50 @@ class PelayananController extends Controller
     {
         try {
             $token = Session::get('token');
-            
-            // Menggunakan hardcode URL untuk menghapus data pelayanan
-            $response = Http::withToken($token)->delete("http://localhost:8001/api/pelayanan/{$id}");
-            
+            $response = Http::withToken($token)->delete($this->apiBaseUrl . "/pelayanan/{$id}");
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
+            }
+
             if ($response->successful()) {
                 return redirect()->route('pelayanan.index')->with('success', 'Layanan berhasil dihapus.');
             }
-            
-            if ($response->status() == 401) {
-                Session::forget('token');
-                return redirect()->route('login')->with('error', 'Sesi telah berakhir, silakan login kembali.');
-            }
-            
-            return redirect()->route('pelayanan.index')->with('error', 'Gagal menghapus layanan.');
+
+            return redirect()->route('pelayanan.index')->with('error', $response->json('message', 'Gagal menghapus layanan.'));
         } catch (\Exception $e) {
-            Log::error('Exception dalam PelayananController@destroy: ' . $e->getMessage());
-            return redirect()->route('pelayanan.index')
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Exception di PelayananController@destroy: ' . $e->getMessage());
+            return redirect()->route('pelayanan.index')->with('error', 'Terjadi kesalahan pada server.');
         }
+    }
+
+    /**
+     * [DRY] Helper method privat untuk mengambil data departemen.
+     */
+    private function _getDepartemens(?string $token): array
+    {
+        if (!$token) {
+            return [];
+        }
+
+        try {
+            $response = Http::withToken($token)->get($this->apiBaseUrl . '/departemen');
+
+            if ($response->unauthorized()) {
+                Session::flush();
+                // Kita tidak bisa redirect dari sini, jadi kembalikan array kosong saja.
+                // Controller utama akan redirect jika perlu.
+                return [];
+            }
+
+            if ($response->successful()) {
+                return $response->json('data', []);
+            }
+        } catch (\Exception $e) {
+            Log::error('Gagal mengambil data departemen: ' . $e->getMessage());
+        }
+
+        return [];
     }
 }
