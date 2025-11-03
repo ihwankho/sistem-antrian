@@ -286,7 +286,6 @@ class AntrianController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
-            \Log::error("Error in getAllAntrian: " . $e->getMessage());
             return response()->json([
                 'status' => false,
                 'message' => 'Terjadi kesalahan saat mengambil data antrian',

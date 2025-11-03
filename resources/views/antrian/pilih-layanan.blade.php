@@ -1,7 +1,7 @@
 @extends('layouts.landing')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/pilih-layanan.css') }}" data-turbo-track="reload">
+    <link rel="stylesheet" href="{{ asset('css/antrian/pilih-layanan.css') }}" data-turbo-track="reload">
 @endpush
 
 @section('content')

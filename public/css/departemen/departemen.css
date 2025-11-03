@@ -1,0 +1,38 @@
+/* public/css/departemen.css */
+
+/* Layout utama untuk halaman departemen */
+.main-content {
+    padding: 2rem;
+    background-color: #f8f9fa;
+}
+
+/* Style untuk card di halaman Index */
+.main-card {
+    border: none;
+    border-radius: 12px;
+}
+
+/* Style untuk card di halaman Create & Edit */
+.form-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+/* Warna tombol utama yang konsisten */
+.btn-primary {
+    background-color: #6366f1;
+    border-color: #6366f1;
+}
+
+/* Tombol aksi (Edit/Hapus) di tabel index */
+.btn-action {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: white !important;
+}

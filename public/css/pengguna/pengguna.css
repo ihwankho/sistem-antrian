@@ -1,0 +1,130 @@
+/* public/css/pengguna.css */
+
+/* --- General --- */
+.btn-primary { 
+    background-color: #6366f1; 
+    border-color: #6366f1; 
+    border: none; 
+}
+.btn-primary .material-icons { 
+    vertical-align: middle; /* Untuk ikon 'add' */
+}
+
+/* --- Dari create.blade.php & edit.blade.php --- */
+.form-card { 
+    border: none; 
+    border-radius: .75rem; 
+}
+
+.photo-preview { 
+    width: 120px; 
+    height: 120px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    border: 3px solid #e9ecef;
+    margin: 0 auto 15px;
+    display: block;
+}
+.photo-upload-container {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.photo-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    color: #6c757d;
+    font-size: 2rem;
+}
+.btn-photo {
+    background-color: #6366f1;
+    border-color: #6366f1;
+    color: white;
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-size: 0.875rem;
+    margin: 0 5px;
+}
+.btn-photo:hover {
+    background-color: #5855eb;
+    border-color: #5855eb;
+    color: white;
+}
+/* Style untuk ikon di dalam tombol foto */
+.btn-photo .material-icons {
+    font-size: 16px;
+    vertical-align: text-bottom;
+}
+
+/* Dari edit.blade.php */
+.btn-photo.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-photo.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* --- Password Toggle --- */
+.password-wrapper {
+    position: relative;
+}
+.toggle-password-btn {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0.5rem;
+    line-height: 1;
+    z-index: 10;
+}
+.toggle-password-btn .material-icons {
+    font-size: 1.25rem;
+}
+
+/* --- Dari index.blade.php --- */
+.main-card { 
+    border: none; 
+    border-radius: 12px; 
+}
+.btn-action { 
+    width: 38px; 
+    height: 38px; 
+    border-radius: 50%; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e9ecef;
+}
+.user-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 1.2rem;
+}
+.user-avatar-placeholder .material-icons {
+    font-size: 20px;
+}

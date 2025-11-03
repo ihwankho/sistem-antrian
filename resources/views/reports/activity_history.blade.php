@@ -1,12 +1,18 @@
 @extends('layouts.app')
 
+@push('styles')
+    {{-- Memanggil file CSS baru --}}
+    <link rel="stylesheet" href="{{ asset('css/reports/reports.css') }}">
+@endpush
+
 @section('content')
 <div class="container-fluid">
     {{-- HEADER HALAMAN --}}
     <div class="row mb-4">
         <div class="col-12 d-flex justify-content-between align-items-center">
             <h1 class="h3 mb-0 text-gray-800">Laporan Aktivitas Antrian</h1>
-            <a href="#" class="btn btn-success" id="exportButton" style="display: none;">
+            {{-- Style inline diganti dengan class Bootstrap .d-none --}}
+            <a href="#" class="btn btn-success d-none" id="exportButton">
                 <i class="material-icons align-middle fs-6">download</i> Export Excel
             </a>
         </div>
@@ -65,7 +71,8 @@
     </div>
 
     {{-- KARTU STATISTIK RINGKASAN --}}
-    <div class="row" id="summarySection" style="display: none;">
+    {{-- Style inline diganti dengan class Bootstrap .d-none --}}
+    <div class="row d-none" id="summarySection">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
@@ -74,7 +81,8 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Antrian</div>
                             <div id="totalAntrian" class="h5 mb-0 font-weight-bold text-gray-800">0</div>
                         </div>
-                        <div class="col-auto"><i class="material-icons text-gray-300" style="font-size: 32px;">receipt_long</i></div>
+                        {{-- Style inline diganti dengan class .summary-card-icon --}}
+                        <div class="col-auto"><i class="material-icons summary-card-icon">receipt_long</i></div>
                     </div>
                 </div>
             </div>
@@ -87,7 +95,8 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Selesai</div>
                             <div id="totalSelesai" class="h5 mb-0 font-weight-bold text-gray-800">0</div>
                         </div>
-                        <div class="col-auto"><i class="material-icons text-gray-300" style="font-size: 32px;">check_circle</i></div>
+                        {{-- Style inline diganti dengan class .summary-card-icon --}}
+                        <div class="col-auto"><i class="material-icons summary-card-icon">check_circle</i></div>
                     </div>
                 </div>
             </div>
@@ -100,7 +109,8 @@
                             <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Dilewati</div>
                             <div id="totalDilewati" class="h5 mb-0 font-weight-bold text-gray-800">0</div>
                         </div>
-                        <div class="col-auto"><i class="material-icons text-gray-300" style="font-size: 32px;">skip_next</i></div>
+                        {{-- Style inline diganti dengan class .summary-card-icon --}}
+                        <div class="col-auto"><i class="material-icons summary-card-icon">skip_next</i></div>
                     </div>
                 </div>
             </div>
@@ -113,7 +123,8 @@
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Estimasi Waktu Tunggu</div>
                             <div id="estimasiWaktu" class="h5 mb-0 font-weight-bold text-gray-800">0 Menit</div>
                         </div>
-                        <div class="col-auto"><i class="material-icons text-gray-300" style="font-size: 32px;">timer</i></div>
+                        {{-- Style inline diganti dengan class .summary-card-icon --}}
+                        <div class="col-auto"><i class="material-icons summary-card-icon">timer</i></div>
                     </div>
                 </div>
             </div>
@@ -194,6 +205,7 @@
 @endsection
 
 @push('scripts')
+{{-- Tidak ada perubahan pada JavaScript --}}
 <script>
     $(document).ready(function() {
         const today = new Date().toISOString().split('T')[0];
@@ -292,8 +304,6 @@
         });
     }
 
-    // Fungsi ini SUDAH BENAR. Ia mengambil `visitor.foto_wajah_url`
-    // yang sudah disiapkan oleh Api/ReportController.php
     function showVisitorDetails(visitor) {
         if (!visitor) return;
         
@@ -308,7 +318,8 @@
         if (visitor.foto_wajah_url) {
             wajahContainer.html(`
                 <a href="${visitor.foto_wajah_url}" target="_blank" title="Lihat ukuran penuh">
-                    <img src="${visitor.foto_wajah_url}" class="img-thumbnail" style="max-height: 150px;" alt="Foto Wajah">
+                    {{-- Style inline diganti dengan class .visitor-photo-thumbnail --}}
+                    <img src="${visitor.foto_wajah_url}" class="img-thumbnail visitor-photo-thumbnail" alt="Foto Wajah">
                 </a>
                 <a href="${visitor.foto_wajah_url}" class="btn btn-sm btn-primary mt-2" download>
                     <i class="material-icons align-middle fs-6">download</i> Unduh

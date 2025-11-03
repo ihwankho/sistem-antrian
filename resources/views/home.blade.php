@@ -7,6 +7,16 @@
 <style>
 /* ... (Style modal Anda sudah benar) ... */
 .modal { display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+/* .modal.active { display: flex; } <-- Ini sudah ada di home.css */
+/* .modal-content { ... } <-- Ini sudah ada di home.css */
+/* .modal-header { ... } <-- Ini sudah ada di home.css */
+/* .modal-close { ... } <-- Ini sudah ada di home.css */
+/* .modal-body { ... } <-- Ini sudah ada di home.css */
+
+/* Style-style modal di bawah ini sudah ada di home.css (di-copy dari blade Anda sebelumnya).
+   Anda bisa menghapusnya dari sini jika sudah yakin ada di home.css.
+   Saya tetap biarkan di sini untuk berjaga-jaga jika ada perbedaan.
+*/
 .modal.active { display: flex; }
 .modal-content { background-color: #fefefe; margin: auto; padding: 0; border: 1px solid #888; width: 90%; max-width: 500px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); animation-name: animatetop; animation-duration: 0.4s; border-radius: 8px; overflow: hidden; }
 .modal-header { padding: 15px 20px; background-color: #6366f1; color: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
@@ -20,7 +30,7 @@
 .tiket-detail { font-size: 0.9rem; color: #555; }
 @keyframes animatetop { from {top: -300px; opacity: 0} to {top: 0; opacity: 1} }
 .search-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 10px 15px; border-radius: 5px; margin-bottom: 15px; text-align: center; }
-.stat-time.serving { color: #dc3545; font-weight: bold; }
+.stat-time.serving { color: #ffffff; font-weight: bold; }
 </style>
 @endpush
 
@@ -111,28 +121,16 @@
         </div>
     </div>
 
+    {{-- [PERBAIKAN DI SINI] --}}
     {{-- BAGIAN PETUGAS (Dengan Container Baru) --}}
     <section id="petugas" class="leadership-section">
         <div class="container">
             <h2 class="section-title">Petugas Pelayanan Terpadu Satu Pintu</h2>
             {{-- Container Baru Ditambahkan --}}
             <div class="leadership-grid-container">
-                <div class="leadership-grid">
-                    @forelse($petugas as $staff)
-                        <div class="leader-card">
-                            <div class="leader-photo {{ $staff['foto'] ? '' : 'no-image' }}">
-                                @if($staff['foto'])
-                                    <img src="{{ $staff['foto'] }}" alt="{{ $staff['nama'] }}">
-                                @else
-                                    <span style="font-size: 2.5em; line-height: 1;">👤</span>
-                                @endif
-                            </div>
-                            <h3 class="leader-name">{{ $staff['nama'] }}</h3>
-                            <p class="leader-position">{{ $staff['nama_loket'] ?? 'N/A' }}</p>
-                        </div>
-                    @empty
-                         <p class="text-center" style="grid-column: 1 / -1; color: white;">Informasi petugas belum tersedia.</p>
-                    @endforelse
+                {{-- Konten di dalam div ini akan di-generate oleh JavaScript --}}
+                <div class="leadership-grid" id="petugas-grid-container">
+                    {{-- @forelse($petugas...) Dihapus dari sini --}}
                 </div>
             </div> {{-- Akhir leadership-grid-container --}}
         </div>
@@ -185,8 +183,157 @@
 
 @push('scripts')
 <script>
-    // ... (JavaScript Anda yang sudah ada, tidak perlu diubah) ...
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // ============================================
+        // === LOGIKA BARU UNTUK SECTION PETUGAS ===
+        // ============================================
+        
+        /**
+         * [PERBAIKAN DI SINI]
+         * Mengambil data petugas ASLI dari controller Laravel
+         * yang sudah di-passing sebagai $petugasGrouped
+         */
+        const dataPetugas = @json($petugasGrouped);
+
+        /**
+         * Inisialisasi section petugas
+         */
+        function initializePetugasSection() {
+            const gridContainer = document.getElementById('petugas-grid-container');
+            if (!gridContainer) {
+                console.warn('Elemen #petugas-grid-container tidak ditemukan.');
+                return;
+            }
+
+            // Kosongkan kontainer
+            gridContainer.innerHTML = '';
+            
+            // Cek jika dataPetugas kosong
+            if (Object.keys(dataPetugas).length === 0) {
+                 gridContainer.innerHTML = '<p class="text-center" style="grid-column: 1 / -1; color: white;">Informasi petugas belum tersedia.</p>';
+                 return;
+            }
+
+            // Loop data petugas (yang sudah terkelompok) dan buat card
+            Object.entries(dataPetugas).forEach(([loketName, officers]) => {
+                if (officers.length === 0) return; // Lewati jika tidak ada petugas
+
+                // 1. Buat elemen card
+                const card = document.createElement('div');
+                card.className = 'leader-card';
+
+                // 2. Buat elemen foto
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'leader-photo';
+                
+                let hasValidPhoto = false;
+
+                officers.forEach((officer, index) => {
+                    if (officer.foto) {
+                        hasValidPhoto = true;
+                        const img = document.createElement('img');
+                        img.src = officer.foto;
+                        img.alt = officer.nama;
+                        // Foto pertama yang valid akan langsung aktif
+                        if (index === 0) {
+                            img.classList.add('active');
+                        }
+                        photoDiv.appendChild(img);
+                    }
+                });
+                
+                // Jika tidak ada foto sama sekali di grup ini
+                if (!hasValidPhoto) {
+                    photoDiv.classList.add('no-image');
+                    photoDiv.innerHTML = '<span style="font-size: 2.5em; line-height: 1;">?</span>'; // Ganti ? dengan ikon jika mau
+                }
+
+                card.appendChild(photoDiv);
+
+                // 3. Buat nama loket
+                const nameH3 = document.createElement('h3');
+                nameH3.className = 'leader-name';
+                nameH3.textContent = loketName;
+                card.appendChild(nameH3);
+                
+                // 4. Buat nama petugas (posisi)
+                const positionP = document.createElement('p');
+                positionP.className = 'leader-position';
+                positionP.textContent = officers[0].nama; // Tampilkan nama petugas pertama
+                card.appendChild(positionP);
+                
+                // 5. Tambahkan card ke grid
+                gridContainer.appendChild(card);
+                
+                // 6. Tambahkan event listener HANYA jika petugas > 1
+                if (officers.length > 1) {
+                    addPetugasRotationEvents(card, officers);
+                }
+            });
+        }
+
+        /**
+         * Menambahkan event listener rotasi foto pada card
+         */
+        function addPetugasRotationEvents(card, officers) {
+            let rotateInterval = null; // Menyimpan ID interval
+            let currentIndex = 0;
+            
+            const images = card.querySelectorAll('.leader-photo img');
+            const positionEl = card.querySelector('.leader-position');
+            
+            // Filter dulu petugas yang punya foto
+            const officersWithPhoto = officers.filter(o => o.foto);
+            const imagesWithPhoto = Array.from(images); // Convert NodeList to Array
+            
+            // Jika tidak ada gambar, atau hanya 1 gambar, jangan lakukan rotasi
+            if (imagesWithPhoto.length <= 1) return;
+
+            // Saat mouse masuk (hover)
+            card.addEventListener('mouseenter', () => {
+                // Hentikan interval lama jika ada
+                if (rotateInterval) clearInterval(rotateInterval);
+
+                rotateInterval = setInterval(() => {
+                    const nextIndex = (currentIndex + 1) % officersWithPhoto.length;
+                    
+                    // Ganti foto
+                    imagesWithPhoto[currentIndex].classList.remove('active');
+                    imagesWithPhoto[nextIndex].classList.add('active');
+                    
+                    // Ganti nama
+                    positionEl.textContent = officersWithPhoto[nextIndex].nama;
+                    
+                    currentIndex = nextIndex;
+                }, 1200); // 800ms = 0.8 detik
+            });
+
+            // Saat mouse keluar
+            card.addEventListener('mouseleave', () => {
+                // Hentikan interval rotasi
+                clearInterval(rotateInterval);
+                rotateInterval = null;
+                
+                // Reset ke foto/nama pertama (sesuai permintaan)
+                if (imagesWithPhoto.length > 0) {
+                     imagesWithPhoto[currentIndex].classList.remove('active');
+                     imagesWithPhoto[0].classList.add('active');
+                     positionEl.textContent = officersWithPhoto[0].nama;
+                }
+                
+                currentIndex = 0; // Reset index
+            });
+        }
+
+        // Panggil fungsi inisialisasi petugas
+        initializePetugasSection();
+
+        
+        // ============================================
+        // === KODE JAVASCRIPT ANDA YANG SUDAH ADA ===
+        // ============================================
+
         // Queue update logic
         function updateQueueInfo() {
              fetch('/api/antrian_all', { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }})

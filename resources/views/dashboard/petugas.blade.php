@@ -1,40 +1,11 @@
 @extends('layouts.app')
 
-@section('content')
-<style>
-    /* Menggunakan CSS yang sama persis dengan dashboard Admin untuk konsistensi */
-    :root {
-        --primary-color: #4361ee; --secondary-color: #3f37c9; --success-color: #4cc9f0;
-        --warning-color: #f72585; --danger-color: #e63946; --light-color: #f8f9fa;
-        --dark-color: #212529; --gray-color: #6c757d; --white-color: #ffffff;
-        --border-radius: 12px; --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        --spacing-lg: 24px; --spacing-xl: 32px;
-    }
-    .page-header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); padding: var(--spacing-xl); border-radius: var(--border-radius); margin-bottom: var(--spacing-xl); box-shadow: var(--shadow); color: var(--white-color); }
-    .page-header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-    .page-title { font-weight: 700; font-size: clamp(1.5rem, 4vw, 2.2rem); margin: 0; }
-    .date-display { background-color: rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 50px; font-weight: 500; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl); }
-    .stat-card { background: var(--white-color); border-radius: var(--border-radius); padding: var(--spacing-xl); box-shadow: var(--shadow); border: none; }
-    .stat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-    .stat-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--gray-color); margin: 0; }
-    .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-    .stat-card.served .stat-icon { background-color: rgba(76, 201, 240, 0.1); color: var(--success-color); }
-    .stat-card.missed .stat-icon { background-color: rgba(230, 57, 70, 0.1); color: var(--danger-color); }
-    .stat-card.waiting .stat-icon { background-color: rgba(247, 37, 133, 0.1); color: var(--warning-color); }
-    .stat-value { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 700; color: var(--dark-color); margin: 0; line-height: 1; }
-    .chart-card { background: var(--white-color); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; }
-    .chart-header { padding: var(--spacing-lg); border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
-    .chart-title { font-weight: 700; font-size: 1.1rem; color: var(--dark-color); margin: 0; }
-    .chart-body { padding: var(--spacing-lg); height: 350px; }
-    .info-box {
-        background-color: var(--white-color);
-        padding: var(--spacing-xl);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow);
-    }
-</style>
+{{-- Menggunakan file CSS yang SAMA dengan dashboard admin --}}
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/dashboard/dashboard.css') }}">
+@endpush
 
+@section('content')
 <div class="container-fluid">
     <div class="page-header">
         <div class="page-header-content">

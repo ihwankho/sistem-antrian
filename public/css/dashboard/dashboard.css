@@ -1,0 +1,256 @@
+/* public/css/dashboard.css */
+
+/* ===== CSS VARIABLES ===== */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --success-color: #4cc9f0;
+    --warning-color: #f72585;
+    --danger-color: #e63946;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --gray-color: #6c757d;
+    --white-color: #ffffff;
+    
+    --border-radius-sm: 8px;
+    --border-radius: 12px;
+    --border-radius-lg: 16px;
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.main-content {
+    padding: var(--spacing-lg);
+    min-height: calc(100vh - 120px);
+    background-color: #f5f7fa;
+}
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--shadow);
+    color: var(--white-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.page-header-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing);
+}
+
+.page-title {
+    font-weight: 700;
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    margin: 0;
+}
+
+.date-display {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: 50px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.9rem;
+}
+
+/* Style untuk Filter Loket di Admin Dashboard */
+.page-header-filter {
+    background-color: rgb(255, 255, 255);
+    border-color: rgba(255,255,255,0.3);
+    color: rgb(0, 0, 0);
+    max-width: 250px; /* Opsional, agar tidak terlalu lebar */
+}
+
+.page-header-filter option {
+    color: black;
+    background-color: white;
+}
+
+
+/* ===== STAT CARDS ===== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+    background: var(--white-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow);
+    border: none;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing);
+}
+
+.stat-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--gray-color);
+    margin: 0;
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* Variasi Warna Stat Card (Gabungan dari kedua file) */
+.stat-card.queue .stat-icon  { background-color: rgba(67, 97, 238, 0.1); color: var(--primary-color); }
+.stat-card.missed .stat-icon { background-color: rgba(247, 37, 133, 0.1); color: var(--warning-color); }
+.stat-card.served .stat-icon { background-color: rgba(76, 201, 240, 0.1); color: var(--success-color); }
+.stat-card.active .stat-icon { background-color: rgba(230, 57, 70, 0.1); color: var(--danger-color); }
+/* Dari dashboard petugas */
+.stat-card.waiting .stat-icon { background-color: rgba(247, 37, 133, 0.1); color: var(--warning-color); } 
+
+
+.stat-value {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    line-height: 1;
+}
+
+/* ===== CONTENT GRID (Admin) ===== */
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: var(--spacing-xl);
+}
+
+/* ===== CHART CARD & NOTIFICATION CARD (Admin) ===== */
+.chart-card,
+.notification-card {
+    background: var(--white-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.chart-header,
+.notification-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chart-title,
+.notification-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+    margin: 0;
+}
+
+.chart-body {
+    padding: var(--spacing-lg);
+    height: 350px;
+}
+
+.notification-card {
+    height: fit-content;
+}
+
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: var(--spacing);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    display: flex;
+    gap: var(--spacing);
+    align-items: flex-start;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.notification-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notification-text h6 {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.notification-text p {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    color: var(--gray-color);
+    line-height: 1.4;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+/* ===== INFO BOX (Petugas) ===== */
+.info-box {
+    background-color: var(--white-color);
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 992px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
