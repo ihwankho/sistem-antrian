@@ -1,7 +1,7 @@
 @extends('layouts.landing')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/tiket-detail.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/antrian/tiket-detail.css') }}">
 @endpush
 
 @section('content')

@@ -14,6 +14,7 @@ use App\Http\Controllers\AntrianController;
 use App\Http\Controllers\PanggilanController;
 use App\Http\Controllers\DisplayController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ProfileController; // Controller Profil
 
 // LandingPage
 Route::get('/', [LandingPageController::class, 'index'])->name('landing.page');
@@ -21,6 +22,7 @@ Route::get('/', [LandingPageController::class, 'index'])->name('landing.page');
 // Autentikasi
 Route::get('/login', [LoginWebController::class, 'showLogin'])->name('login');
 Route::post('/login', [LoginWebController::class, 'login'])->name('login.post');
+// Route::get('/captcha-image', [LoginWebController::class, 'generateCaptcha'])->name('captcha.image');
 
 // ======================
 // RUTE UNTUK PENGUNJUNG (TANPA LOGIN)
@@ -48,6 +50,8 @@ Route::prefix('display')->name('display.')->group(function() {
     Route::get('/loket/{id}', [DisplayController::class, 'getQueueByLoket'])->name('loket');
     Route::get('/daily-summary', [DisplayController::class, 'getDailySummary'])->name('daily-summary');
     Route::get('/ping', [DisplayController::class, 'ping'])->name('ping');
+
+    Route::get('/active-settings', [DisplayController::class, 'getActiveSettings'])->name('active-settings');
 });
 
 // ======================
@@ -99,6 +103,16 @@ Route::prefix('pelayanan')->name('pelayanan.')->middleware(['web.auth', 'role:1'
     Route::delete('/{id}', [PelayananController::class, 'destroy'])->name('destroy');
 });
 
+// Pengaturan Display - hanya untuk admin (role 1)
+Route::prefix('display-settings')->name('display-settings.')->middleware(['web.auth', 'role:1'])->group(function () {
+    Route::get('/', [DisplayController::class, 'settingsIndex'])->name('index');
+    Route::get('/create', [DisplayController::class, 'settingsCreate'])->name('create');
+    Route::post('/', [DisplayController::class, 'settingsStore'])->name('store');
+    Route::get('/{setting}/edit', [DisplayController::class, 'settingsEdit'])->name('edit');
+    Route::put('/{setting}', [DisplayController::class, 'settingsUpdate'])->name('update');
+    Route::delete('/{setting}', [DisplayController::class, 'settingsDestroy'])->name('destroy');
+});
+
 // Antrian - untuk admin (role 1) dan petugas (role 2) - hanya bagian yang memerlukan auth
 Route::prefix('antrian')->name('antrian.')->middleware(['web.auth', 'role:1,2'])->group(function () {
     Route::get('/antrian_all', [AntrianController::class, 'all'])->name('all');
@@ -136,17 +150,30 @@ Route::prefix('panggilan')->name('panggilan.')->middleware(['web.auth', 'role:1,
     });
 });
 
+// Laporan - untuk admin (role 1) dan petugas (role 2)
+Route::get('/reports/activity', [ReportController::class, 'showActivityReport'])
+    ->name('reports.activity')
+    ->middleware(['web.auth', 'role:1,2']);
+Route::get('/reports/activity/export', [ReportController::class, 'exportExcel'])
+    ->name('reports.activity.export')
+    ->middleware(['web.auth', 'role:1,2']);
+
+// Profil Pengguna - hanya untuk petugas (role 2)
+Route::prefix('profil')->name('profil.')->middleware(['web.auth', 'role:2'])->group(function () {
+    Route::get('/', [ProfileController::class, 'edit'])->name('edit');
+    Route::put('/', [ProfileController::class, 'update'])->name('update');
+});
+
+
 // Logout
 Route::post('/logout', function () {
     Auth::logout();
     return redirect('/login');
 })->name('logout');
 
-// Report
-Route::get('/reports/activity', [ReportController::class, 'showActivityReport'])
-    ->name('reports.activity')
-    ->middleware(['web.auth', 'role:1,2']);
-Route::get('/reports/activity/export', [ReportController::class, 'exportExcel'])->name('reports.activity.export');
+// ======================
+// RUTE LAIN-LAIN (TESTING, FALLBACK)
+// ======================
 
 // Test API connection
 Route::get('/test-api-connection', function () {
@@ -179,7 +206,8 @@ Route::fallback(function () {
     }
     return redirect('/login')->with('error', 'Halaman tidak ditemukan.');
 });
-// Tambahkan ini di paling bawah routes/web.php
+
+// Tes koneksi API
 Route::get('/tes-koneksi-api', function () {
     try {
         $apiUrl = env('API_BASE_URL', 'http://127.0.0.1:8001/api');

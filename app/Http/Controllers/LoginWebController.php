@@ -15,9 +15,7 @@ class LoginWebController extends Controller
 
     public function __construct()
     {
-        // --- PERUBAHAN DI SINI: Mengambil URL dasar dari config/services.php ---
         $this->apiBaseUrl = rtrim(config('services.api.base_url'), '/');
-        // --------------------------------------------------------------------
     }
 
     public function showLogin()
@@ -28,27 +26,52 @@ class LoginWebController extends Controller
     public function login(Request $request)
     {
         try {
-            // [KEAMANAN] Sanitasi input nama pengguna untuk mencegah XSS
+            // [KEAMANAN] Sanitasi input nama pengguna
+            // Walaupun tipenya email, field name-nya tetap 'nama_pengguna'
             $request->merge(['nama_pengguna' => strip_tags($request->input('nama_pengguna'))]);
 
-            $credentials = $request->validate([
-                'nama_pengguna' => 'required|string|max:255',
-                'password'      => 'required|string',
+            // --- PERUBAHAN: Validasi 'nama_pengguna' ditambahkan rule 'email' ---
+            $credentialsAndCaptcha = $request->validate([
+                'nama_pengguna'        => 'required|string|email|max:255', // <-- PERUBAHAN
+                'password'             => 'required|string',
+                'g-recaptcha-response' => 'required|string',
             ]);
 
-            // Panggil API untuk otentikasi
-            $response = $this->_authenticateWithApi($credentials);
+            // --- VALIDASI CAPTCHA GOOGLE ---
+            $recaptchaToken = $credentialsAndCaptcha['g-recaptcha-response'];
+            $secretKey = config('services.recaptcha.secret_key');
 
-            if ($response->failed()) {
-                return $this->_handleApiError($response);
+            $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+                'secret'   => $secretKey,
+                'response' => $recaptchaToken,
+                'remoteip' => $request->ip(),
+            ]);
+
+            $responseData = $response->json();
+
+            if (!$responseData || !isset($responseData['success']) || $responseData['success'] !== true) {
+                Log::warning('reCAPTCHA verification failed.', $responseData);
+                return back()
+                    ->withErrors(['captcha' => 'Verifikasi "I\'m not a robot" gagal. Silakan coba lagi.'])
+                    ->withInput($request->except('password', 'g-recaptcha-response'));
+            }
+            // --- AKHIR VALIDASI CAPTCHA GOOGLE ---
+
+            $credentials = [
+                'nama_pengguna' => $credentialsAndCaptcha['nama_pengguna'],
+                'password'      => $credentialsAndCaptcha['password'],
+            ];
+
+            $apiResponse = $this->_authenticateWithApi($credentials);
+
+            if ($apiResponse->failed()) {
+                // [PERBAIKAN] Panggil helper _handleApiError
+                return $this->_handleApiError($apiResponse);
             }
 
-            $apiData = $response->json('data');
-
-            // Buat atau perbarui pengguna di database lokal
+            $apiData = $apiResponse->json('data');
             $localUser = $this->_syncLocalUser($apiData, $credentials['password']);
 
-            // Login ke sesi web Laravel
             Auth::login($localUser);
             session(['token' => $apiData['token'] ?? null]);
 
@@ -62,7 +85,7 @@ class LoginWebController extends Controller
             Log::error('Connection error during login: ' . $e->getMessage());
             return back()->with('error', 'Tidak dapat terhubung ke server. Periksa koneksi Anda.');
         } catch (\Exception $e) {
-            Log::error('General error during login: ' . $e->getMessage());
+            Log::error('General error during login: '. $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan yang tidak terduga.');
         }
     }
@@ -73,11 +96,10 @@ class LoginWebController extends Controller
 
         if ($token) {
             try {
-                // Peringatan: HTTP tidak aman untuk produksi, gunakan HTTPS.
                 Http::withToken($token)->post($this->apiBaseUrl . '/logout');
                 Log::info('API logout request sent.');
             } catch (\Exception $e) {
-                Log::error('API logout failed: ' . $e->getMessage());
+                Log::error('API logout failed: '. $e->getMessage());
             }
         }
 
@@ -88,45 +110,35 @@ class LoginWebController extends Controller
         return redirect('/login');
     }
 
+
     /**
      * [HELPER] Mengirim kredensial ke API untuk otentikasi.
-     * @param array $credentials
-     * @return Response
      */
     private function _authenticateWithApi(array $credentials): Response
     {
         Log::info('Attempting API login for user: ' . $credentials['nama_pengguna']);
-
-        // Peringatan: Mengirim password via HTTP sangat tidak aman untuk produksi.
-        // Harap gunakan HTTPS untuk melindungi data pengguna.
         return Http::timeout(30)->post($this->apiBaseUrl . '/login', $credentials);
     }
 
     /**
      * [HELPER] Sinkronisasi data pengguna dari API ke database lokal.
-     * Menggunakan updateOrCreate() untuk efisiensi.
-     * @param array $apiUserData
-     * @param string $password
-     * @return User
      */
     private function _syncLocalUser(array $apiUserData, string $password): User
     {
         return User::updateOrCreate(
-            ['id' => $apiUserData['id']], // Kunci untuk mencari pengguna
-            [                               // Data untuk diperbarui atau dibuat
+            ['id' => $apiUserData['id']], 
+            [
                 'nama' => $apiUserData['nama'],
                 'nama_pengguna' => $apiUserData['nama_pengguna'],
                 'role' => (int) $apiUserData['role'],
                 'id_loket' => $apiUserData['id_loket'] ?? null,
-                'password' => bcrypt($password), // Selalu update password
+                'password' => bcrypt($password), 
             ]
         );
     }
 
     /**
      * [HELPER] Menangani berbagai jenis error dari respons API.
-     * @param Response $response
-     * @return \Illuminate\Http\RedirectResponse
      */
     private function _handleApiError(Response $response)
     {
@@ -134,8 +146,9 @@ class LoginWebController extends Controller
         $responseData = $response->json();
         $errorMessage = $responseData['message'] ?? 'Terjadi kesalahan pada server.';
 
+        // --- PERUBAHAN: Pesan error diubah menjadi "Email" ---
         if ($statusCode == 401) {
-            $errorMessage = 'Nama pengguna atau password salah.';
+            $errorMessage = 'Email atau password salah.'; // <-- PERUBAHAN
         }
 
         Log::error("API login failed with status {$statusCode}: " . $response->body());
@@ -144,8 +157,6 @@ class LoginWebController extends Controller
 
     /**
      * [HELPER] Redirect pengguna berdasarkan peran.
-     * @param User $user
-     * @return \Illuminate\Http\RedirectResponse
      */
     private function redirectBasedOnRole(User $user)
     {

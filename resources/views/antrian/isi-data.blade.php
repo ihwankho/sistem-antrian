@@ -4,7 +4,7 @@
     {{-- Memuat ikon dan file CSS asli Anda --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     {{-- Pastikan nama file CSS ini sesuai dengan milik Anda --}}
-    <link rel="stylesheet" href="{{ asset('css/isi-data.css') }}"> 
+    <link rel="stylesheet" href="{{ asset('css/antrian/isi-data.css') }}"> 
 @endpush
 
 @section('content')

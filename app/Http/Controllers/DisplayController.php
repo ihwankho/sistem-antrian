@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Loket;
 use App\Models\Antrian;
+use App\Models\DisplaySetting; // <-- TAMBAHAN
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Validation\ValidationException; // <-- TAMBAHAN
 
 class DisplayController extends Controller
 {
@@ -16,7 +18,9 @@ class DisplayController extends Controller
      */
     public function index()
     {
-        return view('Display');
+        // View ini sekarang akan memanggil API '/display/active-settings'
+        // dan '/display/queue-data' menggunakan JavaScript
+        return view('display.Display');
     }
 
     /**
@@ -77,7 +81,6 @@ class DisplayController extends Controller
                     'next_queues' => $nextQueuesForLoket->toArray(),
                     'waiting_count' => $nextQueuesForLoket->count(),
                     'voice_text' => $voiceText,
-                    // == PERUBAHAN DI SINI: Menambahkan timestamp untuk deteksi recall ==
                     'call_timestamp' => $currentAntrian ? $currentAntrian->updated_at->timestamp : null,
                 ];
             }
@@ -292,6 +295,184 @@ class DisplayController extends Controller
             'timestamp' => now()->toDateTimeString()
         ]);
     }
+
+    
+    // ===================================================================
+    // ▼▼▼ FUNGSI BARU UNTUK API PUBLIC DISPLAY SETTINGS ▼▼▼
+    // ===================================================================
+
+    /**
+     * [API] Mengambil setting (video & text) yang sedang aktif.
+     * Ini akan dipanggil oleh JavaScript di halaman display publik.
+     */
+    public function getActiveSettings()
+    {
+        $setting = DisplaySetting::where('status', 'active')->first();
+
+        if (!$setting) {
+            // Sediakan fallback jika tidak ada setting aktif
+            return response()->json([
+                'video_urls' => [
+                    'https://www.youtube.com/watch?v=ScMzIvxBSi4', // Default video 1
+                    'https://www.youtube.com/watch?v=kJQP7kiw5Fk', // Default video 2
+                ],
+                'running_text' => 'SELAMAT DATANG DI LAYANAN KAMI. ATUR PENGUMUMAN DI HALAMAN ADMIN.',
+                'video_ids' => ['ScMzIvxBSi4', 'kJQP7kiw5Fk'] // Sediakan video_ids fallback
+            ]);
+        }
+        
+        // Helper untuk parse video ID dari URL
+        $setting->video_ids = $this->parseVideoIds($setting->video_urls);
+
+        return response()->json($setting);
+    }
+    
+    /**
+     * Helper untuk mengekstrak Video ID dari berbagai format URL YouTube.
+     */
+    private function parseVideoIds($urls)
+    {
+        if (!is_array($urls)) {
+            return [];
+        }
+
+        $ids = [];
+        // Regex ini akan mencocokkan ID dari format:
+        // - https://www.youtube.com/watch?v=kJQP7kiw5Fk
+        // - https://youtu.be/kJQP7kiw5Fk
+        // - https://www.youtube.com/embed/kJQP7kiw5Fk
+        // Dan variasi lainnya
+        $regex = '/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/';
+
+        foreach ($urls as $url) {
+            if (preg_match($regex, $url, $matches)) {
+                if (!empty($matches[2]) && strlen($matches[2]) == 11) {
+                    $ids[] = $matches[2];
+                }
+            }
+        }
+        
+        return array_unique($ids); // Hanya ID unik
+    }
+
+
+    // ===================================================================
+    // ▼▼▼ FUNGSI BARU UNTUK CRUD ADMIN DISPLAY SETTINGS ▼▼▼
+    // ===================================================================
+
+    /**
+     * [ADMIN] Menampilkan daftar semua display settings.
+     */
+    public function settingsIndex()
+    {
+        $settings = DisplaySetting::orderBy('status', 'desc')->orderBy('updated_at', 'desc')->get();
+        
+        // [PERUBAHAN] Path view diubah ke 'display.settings.index'
+        return view('display.settings.index', compact('settings'));
+    }
+
+    /**
+     * [ADMIN] Menampilkan form untuk membuat setting baru.
+     */
+    public function settingsCreate()
+    {
+        // [PERUBAHAN] Path view diubah ke 'display.settings.create'
+        return view('display.settings.create');
+    }
+
+    /**
+     * [ADMIN] Menyimpan setting baru ke database.
+     */
+    public function settingsStore(Request $request)
+    {
+        $data = $this->validateRequest($request);
+
+        // Logika Penting: Jika status baru adalah 'active',
+        // nonaktifkan semua setting lain terlebih dahulu.
+        if ($data['status'] == 'active') {
+            DisplaySetting::where('status', 'active')->update(['status' => 'inactive']);
+        }
+
+        DisplaySetting::create($data);
+
+        return redirect()->route('display-settings.index')->with('success', 'Pengaturan berhasil disimpan.');
+    }
+
+    /**
+     * [ADMIN] Menampilkan form untuk mengedit setting.
+     */
+    public function settingsEdit(DisplaySetting $setting)
+    {
+        // [PERUBAHAN] Path view diubah ke 'display.settings.edit'
+        return view('display.settings.edit', compact('setting'));
+    }
+
+    /**
+     * [ADMIN] Memperbarui setting di database.
+     */
+    public function settingsUpdate(Request $request, DisplaySetting $setting)
+    {
+        $data = $this->validateRequest($request);
+
+        // Logika Penting: Jika status diubah jadi 'active',
+        // nonaktifkan semua setting lain terlebih dahulu.
+        if ($data['status'] == 'active') {
+            DisplaySetting::where('status', 'active')
+                         ->where('id', '!=', $setting->id)
+                         ->update(['status' => 'inactive']);
+        }
+
+        $setting->update($data);
+
+        return redirect()->route('display-settings.index')->with('success', 'Pengaturan berhasil diperbarui.');
+    }
+
+    /**
+     * [ADMIN] Menghapus setting dari database.
+     */
+    public function settingsDestroy(DisplaySetting $setting)
+    {
+        // Jangan hapus jika sedang aktif (opsional, tapi best practice)
+        if ($setting->status == 'active') {
+             return redirect()->route('display-settings.index')->with('error', 'Tidak dapat menghapus pengaturan yang sedang aktif.');
+        }
+        
+        $setting->delete();
+        return redirect()->route('display-settings.index')->with('success', 'Pengaturan berhasil dihapus.');
+    }
+
+    /**
+     * [ADMIN] Helper untuk validasi dan pemrosesan data request.
+     */
+    private function validateRequest(Request $request)
+    {
+        $validated = $request->validate([
+            'video_urls_text' => 'required|string',
+            'running_text' => 'required|string|max:1000',
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        // Ubah 'video_urls_text' (dari textarea) menjadi array JSON
+        $videoUrls = explode("\n", $validated['video_urls_text']);
+        $videoUrls = array_map('trim', $videoUrls); // Hapus spasi
+        $videoUrls = array_filter($videoUrls); // Hapus baris kosong
+
+        if (empty($videoUrls)) {
+            throw ValidationException::withMessages([
+                'video_urls_text' => 'Minimal harus ada satu URL video.',
+            ]);
+        }
+        
+        // Kembalikan data yang siap disimpan
+        return [
+            'video_urls' => $videoUrls,
+            'running_text' => $validated['running_text'],
+            'status' => $validated['status'],
+        ];
+    }
+
+
+    // --- (Fungsi helper privat Anda yang sudah ada) ---
 
     /**
      * Helper method privat untuk mendapatkan teks status.

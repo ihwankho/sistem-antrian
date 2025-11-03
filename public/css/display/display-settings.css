@@ -1,0 +1,57 @@
+/* public/css/display-settings.css */
+
+/* Untuk tombol "Kembali" di halaman create & edit */
+.btn-back-icon {
+    padding: 0.5rem 0.7rem;
+}
+.btn-back-icon .material-icons {
+    vertical-align: middle;
+}
+
+/* Untuk tombol "Tambah Baru" di halaman index */
+.btn-add-new .material-icons {
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+/* Mengatur lebar kolom aksi di tabel */
+.table-col-action {
+    width: 150px;
+}
+
+/* Menyamakan ukuran ikon di tombol aksi tabel */
+.btn-action-icon .material-icons {
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+/* Untuk form hapus di tabel agar sejajar */
+.form-delete-inline {
+    display: inline;
+}
+
+/* Style untuk list video di dalam tabel */
+.table-video-list {
+    font-size: 0.9rem;
+    list-style: none;
+    margin-bottom: 0;
+    padding-left: 0;
+}
+
+.table-video-list .material-icons {
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+/* Style untuk running text di dalam tabel */
+.table-running-text {
+    font-size: 0.9rem;
+}
+
+/* Memberi padding yang konsisten pada badge status */
+.table-settings .badge {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}

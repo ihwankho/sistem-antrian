@@ -31,8 +31,10 @@ class LandingPageController extends Controller
                 $departemen->pelayanans = $allPelayanans->get($departemen->id, collect());
             });
 
-            // Mengambil petugas (Role 2) dan loket terkait.
-            $petugas = User::with('loket:id,nama_loket') // Eager load relasi loket
+            // [PERBAIKAN DI SINI]
+            // Mengambil petugas (Role 2) dan loket terkait,
+            // LALU MENGELOMPOKKANNYA berdasarkan nama loket.
+            $petugasGrouped = User::with('loket:id,nama_loket') // Eager load relasi loket
                 ->where('role', 2) // Hanya ambil petugas
                 ->orderBy('nama', 'asc')
                 ->select('id', 'nama', 'nama_pengguna', 'role', 'id_loket', 'foto') // Pilih kolom yang perlu saja
@@ -43,11 +45,11 @@ class LandingPageController extends Controller
                         'nama' => $user->nama,
                         'nama_loket' => $user->loket->nama_loket ?? 'Tidak Ada Loket', // Cek null safety
                         
-                        // [PERBAIKAN DI SINI]
-                        // Langsung gunakan asset() karena $user->foto sudah berisi path 'images/user_foto/...'
+                        // Path foto sudah benar menggunakan asset()
                         'foto' => $user->foto ? asset($user->foto) : null, 
                     ];
-                });
+                })
+                ->groupBy('nama_loket'); // <-- KUNCI PERUBAHAN ADA DI SINI
 
             // Mengambil data panduan.
             $panduans = Panduan::orderBy('created_at', 'asc')->get();
@@ -59,14 +61,12 @@ class LandingPageController extends Controller
             // Jika error, log dan siapkan data kosong
             Log::error('Error in LandingPageController@index: ' . $e->getMessage());
             $departemens = collect();
-            $petugas = collect();
+            $petugasGrouped = collect(); // [PERBAIKAN DI SINI]
             $panduans = collect();
             $lokets = collect();
-            // Opsional: Kirim pesan error ke view jika perlu
-            // session()->flash('error', 'Gagal memuat data halaman.');
         }
 
         // Kirim data ke view 'home' (pastikan nama view benar)
-        return view('home', compact('departemens', 'petugas', 'panduans', 'lokets'));
+        return view('home', compact('departemens', 'petugasGrouped', 'panduans', 'lokets')); // [PERBAIKAN DI SINI]
     }
 }

@@ -1,0 +1,12 @@
+/* public/css/reports.css */
+
+/* Menggantikan style="font-size: 32px;" pada ikon kartu summary */
+.summary-card-icon {
+    font-size: 32px;
+    color: #dddfeb; /* Ini adalah warna dari class 'text-gray-300' */
+}
+
+/* Menggantikan style="max-height: 150px;" di JS untuk foto modal */
+.visitor-photo-thumbnail {
+    max-height: 150px;
+}

@@ -1,0 +1,31 @@
+/* public/css/pelayanan.css */
+
+/* Dari create.blade.php & edit.blade.php */
+.form-card {
+    border: none;
+    border-radius: .75rem;
+}
+
+/* Dari create.blade.php, edit.blade.php, & index.blade.php (inline) */
+.btn-primary {
+    background-color: #6366f1;
+    border-color: #6366f1;
+    border: none; 
+}
+
+/* Dari index.blade.php */
+.main-card { 
+    border: none; 
+    border-radius: 12px; 
+}
+
+.btn-action { 
+    width: 38px; 
+    height: 38px; 
+    border-radius: 50%; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    border: none; 
+    color: white !important; 
+}
